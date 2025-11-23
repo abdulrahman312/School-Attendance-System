@@ -4,6 +4,7 @@ import { fetchSchoolData, saveAttendance, deleteAttendance } from './services/ap
 import { Student, AttendanceRecord, SectionType, APIResponse } from './types';
 import { Button } from './components/Button';
 import { GOOGLE_SCRIPT_URL } from './constants';
+import { translations, Lang, toArNum, formatDate } from './translations';
 
 // --- UI Components ---
 
@@ -12,26 +13,30 @@ const Header = ({
   title, 
   subtitle, 
   showBack = false, 
-  isConnected 
+  isConnected,
+  lang,
+  t
 }: { 
   onHome: () => void, 
   title: string, 
   subtitle?: string, 
   showBack?: boolean,
-  isConnected: boolean
+  isConnected: boolean,
+  lang: Lang,
+  t: (key: keyof typeof translations['en'], params?: any) => string
 }) => (
-  <header className="sticky top-0 z-50 px-6 py-4 glass-dark shadow-sm no-print">
+  <header className="sticky top-0 z-50 px-6 py-4 glass-dark shadow-sm no-print" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
     <div className="flex items-center justify-between max-w-xl mx-auto">
       <div className="flex items-center gap-3">
         {showBack && (
           <button 
             onClick={onHome} 
-            className="group flex items-center gap-2 px-4 py-2 -ml-2 rounded-full bg-white/90 shadow-sm border border-slate-200 text-slate-700 hover:bg-white hover:shadow-md transition-all active:scale-95 mr-1"
+            className="group flex items-center gap-2 px-4 py-2 -ms-2 rounded-full bg-white/90 shadow-sm border border-slate-200 text-slate-700 hover:bg-white hover:shadow-md transition-all active:scale-95 me-1"
           >
             <div className="bg-slate-100 p-1 rounded-full group-hover:bg-slate-200 transition-colors">
-               <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+               <svg className={`w-5 h-5 animate-pulse ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path></svg>
             </div>
-            <span className="text-sm font-bold pr-1">Go Back</span>
+            <span className="text-sm font-bold pe-1">{t('goBack')}</span>
           </button>
         )}
         <div>
@@ -40,7 +45,7 @@ const Header = ({
         </div>
       </div>
       
-      <div className={`h-2.5 w-2.5 rounded-full shadow-sm ring-2 ring-white ${isConnected ? 'bg-emerald-400' : 'bg-orange-400'}`} title={isConnected ? "Connected" : "Mock Data"} />
+      <div className={`h-2.5 w-2.5 rounded-full shadow-sm ring-2 ring-white ${isConnected ? 'bg-emerald-400' : 'bg-orange-400'}`} title={isConnected ? t('systemOnline') : t('mockMode')} />
     </div>
   </header>
 );
@@ -60,7 +65,7 @@ const SectionButton = ({
 }) => (
   <button 
     onClick={onClick}
-    className={`group relative w-full overflow-hidden rounded-[2rem] p-8 text-left shadow-xl transition-all hover:scale-[1.02] active:scale-95 border-2 border-white/20
+    className={`group relative w-full overflow-hidden rounded-[2rem] p-8 text-start shadow-xl transition-all hover:scale-[1.02] active:scale-95 border-2 border-white/20
     ${color === 'blue' 
       ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-blue-500/30' 
       : 'bg-gradient-to-br from-rose-500 to-pink-600 shadow-pink-500/30'
@@ -90,26 +95,43 @@ const DateSelector = ({
   label, 
   value, 
   onChange, 
-  accentColor = 'blue' 
+  accentColor = 'blue',
+  lang,
+  t
 }: { 
   label: string, 
   value: string, 
   onChange: (val: string) => void,
-  accentColor?: string 
+  accentColor?: string,
+  lang: Lang,
+  t: any
 }) => {
-  // Format YYYY-MM-DD to DD-MM-YYYY for display
-  const displayDate = value ? value.split('-').reverse().join('-') : 'Select Date';
+  // Format YYYY-MM-DD to DD-MM-YYYY for display or localized
+  let displayDate = 'Select Date';
+  if (value) {
+     if (lang === 'ar') {
+       // Just showing numeric date in Ar numerals
+       const parts = value.split('-'); // YYYY-MM-DD
+       if (parts.length === 3) {
+         displayDate = `${toArNum(parts[2], lang)}-${toArNum(parts[1], lang)}-${toArNum(parts[0], lang)}`;
+       }
+     } else {
+       displayDate = value.split('-').reverse().join('-');
+     }
+  } else {
+    displayDate = t('selectDate');
+  }
   
   // Get today's date in YYYY-MM-DD for max attribute (disable future dates)
   const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="flex-1 min-w-[120px]">
-      <label className="text-[10px] font-bold text-slate-400 mb-1.5 block uppercase tracking-wider ml-1">{label}</label>
+      <label className="text-[10px] font-bold text-slate-400 mb-1.5 block uppercase tracking-wider ms-1">{label}</label>
       
       <div className="relative flex items-center bg-white rounded-xl border border-slate-200 shadow-sm h-[46px] overflow-hidden group">
         
-        {/* CSS Hack to make the calendar picker indicator cover the entire input on WebKit browsers (Chrome/Edge/Safari) */}
+        {/* CSS Hack to make the calendar picker indicator cover the entire input on WebKit browsers */}
         <style>{`
           .full-picker-input::-webkit-calendar-picker-indicator {
             position: absolute;
@@ -125,7 +147,7 @@ const DateSelector = ({
           }
         `}</style>
 
-        {/* The Native Input: Covers the entire component (text + button) */}
+        {/* The Native Input */}
         <input 
           type="date" 
           value={value}
@@ -141,13 +163,13 @@ const DateSelector = ({
           <div className={`transition-colors ${accentColor === 'pink' ? 'text-pink-500' : 'text-blue-500'}`}>
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
-          <span className="text-slate-700 font-semibold text-sm font-mono tracking-tight">{displayDate}</span>
+          <span className="text-slate-700 font-semibold text-sm font-mono tracking-tight" dir="ltr">{displayDate}</span>
         </div>
 
         {/* Visual Layer - Right Side (Button) */}
         <div 
           className={`
-            h-full px-4 border-l border-slate-100 
+            h-full px-4 border-s border-slate-100 
             flex items-center justify-center pointer-events-none transition-colors
             group-active:bg-slate-50
             ${accentColor === 'pink' ? 'text-pink-500' : 'text-blue-500'}
@@ -187,6 +209,7 @@ enum AppMode {
 }
 
 export default function App() {
+  const [lang, setLang] = useState<Lang>('ar'); // Default Arabic
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -219,6 +242,25 @@ export default function App() {
 
   // Time State for Home Screen
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Setup Language Direction
+  useEffect(() => {
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  // Translation Helper
+  const t = (key: keyof typeof translations['en'], params?: Record<string, string | number>) => {
+    let text = translations[lang][key] || translations['en'][key] || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, String(v));
+      });
+    }
+    return text;
+  };
+
+  const n = (num: number | string) => toArNum(num, lang);
 
   // Initial Load & Clock
   useEffect(() => {
@@ -353,24 +395,22 @@ export default function App() {
     });
 
     return {
-      todayDateStr: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-      dayNumber: new Date().getDate(),
-      monthDay: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short' }),
+      todayDateStr: new Date().toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      dayNumber: n(new Date().getDate()),
+      monthDay: new Date().toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'short' }),
       totalStudents,
       absentCount,
       attendancePercentage,
-      maxAbsenceClass: maxAbsenceClass === 'None' ? 'No absences' : maxAbsenceClass,
+      maxAbsenceClass: maxAbsenceClass === 'None' ? t('noAbsences') : maxAbsenceClass,
       absenteesList: todayRecords
     };
 
-  }, [students, attendanceHistory, selectedSection, selectedDivision]);
+  }, [students, attendanceHistory, selectedSection, selectedDivision, lang]);
 
 
   const formatClassName = (cls: string) => {
+    // DB Data remains as is per instructions, only labels change
     if (cls.includes('-')) return cls;
-    const num = cls.replace(/[^0-9]/g, '');
-    const alpha = cls.replace(/[0-9]/g, '').trim();
-    if (num && alpha) return `${num} - ${alpha}`;
     return cls;
   };
 
@@ -434,14 +474,13 @@ export default function App() {
     setIsDeleting(false);
     
     if (success) {
-      // Remove from local state immediately
       setAttendanceHistory(prev => prev.filter(r => 
         !(String(r.studentId) === String(studentToRemove.id) && 
           String(r.date).substring(0, 10) === String(studentToRemove.date))
       ));
       setStudentToRemove(null);
     } else {
-      alert("Failed to delete record. Please try again.");
+      alert(t('failedToDelete'));
     }
   };
 
@@ -473,7 +512,7 @@ export default function App() {
       setSelectedClass('');
       setMode(AppMode.TRACK_SELECT);
     } else {
-      alert("Failed to save. Check connection.");
+      alert(t('failedToSave'));
     }
   };
 
@@ -510,7 +549,6 @@ export default function App() {
   const getBackgroundClass = () => {
     if (selectedSection === 'Boys') return 'from-blue-50 via-cyan-50/30 to-white text-blue-900';
     if (selectedSection === 'Girls') return 'from-rose-50 via-pink-50/30 to-white text-rose-900';
-    // Lighter gradient for Home
     return 'from-slate-100 via-zinc-50 to-white text-slate-900'; 
   };
 
@@ -520,18 +558,18 @@ export default function App() {
 
   if (loading && mode === AppMode.HOME) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="relative w-24 h-24 mb-8">
           <div className="absolute inset-0 rounded-full border-4 border-slate-200 animate-pulse"></div>
           <div className="absolute inset-0 rounded-full border-t-4 border-slate-800 animate-spin"></div>
         </div>
-        <h2 className="text-xl font-bold text-slate-700 animate-pulse tracking-wide uppercase">Starting System...</h2>
+        <h2 className="text-xl font-bold text-slate-700 animate-pulse tracking-wide uppercase">{t('startingSystem')}</h2>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br transition-colors duration-1000 ${getBackgroundClass()}`}>
+    <div className={`min-h-screen bg-gradient-to-br transition-colors duration-1000 ${getBackgroundClass()}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       
       {/* HOME SCREEN */}
       {mode === AppMode.HOME && (
@@ -539,6 +577,16 @@ export default function App() {
           
           {/* Main Branding Header */}
           <header className="flex flex-col items-center pt-8 pb-4 text-center px-4 bg-gradient-to-b from-white/60 to-transparent backdrop-blur-[2px] sticky top-0 z-20">
+            {/* Language Toggle - Absolute Positioned */}
+            <button 
+              onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
+              className="absolute top-6 end-6 px-3 py-1.5 rounded-full bg-white shadow-sm border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors z-30 flex items-center gap-1.5"
+            >
+               <span className={lang === 'en' ? 'text-blue-600' : 'text-slate-400'}>EN</span>
+               <span className="text-slate-300">|</span>
+               <span className={lang === 'ar' ? 'text-blue-600 font-arabic' : 'text-slate-400 font-arabic'}>عربي</span>
+            </button>
+
             {/* School Logo */}
             <div className="w-20 h-20 bg-white rounded-full shadow-xl shadow-slate-200 flex items-center justify-center mb-3 overflow-hidden relative z-10 p-1 ring-1 ring-slate-100">
                <img 
@@ -549,17 +597,17 @@ export default function App() {
             </div>
             
             <h1 className="text-xl md:text-2xl font-extrabold leading-tight mb-3 flex flex-wrap justify-center items-center gap-x-3">
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-slate-900 to-slate-700">Middle East International School</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-slate-900 to-slate-700">{t('schoolName')}</span>
               <span className="hidden sm:inline w-1 h-1 rounded-full bg-slate-400"></span>
-              <span className="text-slate-500 font-serif italic">AlMuruj</span>
+              <span className="text-slate-500 font-serif italic">{t('schoolBranch')}</span>
             </h1>
             
             <div className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-slate-900 border border-slate-800 shadow-xl shadow-slate-300/40 transform hover:scale-[1.02] transition-transform">
-              <span className="relative flex h-2 w-2 mr-2.5">
+              <span className="relative flex h-2 w-2 me-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
               </span>
-              <p className="text-[10px] sm:text-xs font-bold tracking-[0.15em] text-white uppercase">Absent Recording System</p>
+              <p className="text-[10px] sm:text-xs font-bold tracking-[0.15em] text-white uppercase">{t('systemName')}</p>
             </div>
           </header>
 
@@ -568,19 +616,19 @@ export default function App() {
             {/* Date & Time Widget */}
             <div className="mb-8 text-center relative">
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-gradient-to-tr from-slate-200 to-transparent rounded-full blur-3xl opacity-30 pointer-events-none"></div>
-               <h2 className="relative text-6xl sm:text-7xl font-black text-slate-800/90 tracking-tighter tabular-nums leading-none mb-1">
-                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+               <h2 className="relative text-6xl sm:text-7xl font-black text-slate-800/90 tracking-tighter tabular-nums leading-none mb-1" dir="ltr">
+                 {currentTime.toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                </h2>
                <p className="relative text-lg sm:text-xl font-medium text-slate-500">
-                 {currentTime.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                 {currentTime.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                </p>
             </div>
 
             {/* Main Action Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
               <SectionButton 
-                label="Boys Section" 
-                sublabel="Manage Attendance"
+                label={t('boysSection')} 
+                sublabel={t('manageAttendance')}
                 color="blue" 
                 onClick={() => startTracking('Boys')}
                 icon={
@@ -591,8 +639,8 @@ export default function App() {
               />
               
               <SectionButton 
-                label="Girls Section" 
-                sublabel="Manage Attendance"
+                label={t('girlsSection')} 
+                sublabel={t('manageAttendance')}
                 color="pink" 
                 onClick={() => startTracking('Girls')}
                 icon={
@@ -612,26 +660,26 @@ export default function App() {
                    <div className="p-2 bg-slate-800 rounded-lg text-white shadow-lg shadow-slate-400/20">
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                    </div>
-                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">Analytics Reports</h3>
+                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">{t('analyticsReports')}</h3>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => startAnalysis('Boys')} className="group/btn flex items-center justify-between p-4 rounded-xl bg-blue-50/50 border border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all shadow-sm">
                     <div>
-                      <p className="font-bold text-base text-blue-900">Boys Report</p>
-                      <p className="text-xs text-blue-500 font-medium mt-0.5">View Statistics</p>
+                      <p className="font-bold text-base text-blue-900">{t('boysReport')}</p>
+                      <p className="text-xs text-blue-500 font-medium mt-0.5">{t('viewStatistics')}</p>
                     </div>
-                    <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm group-hover/btn:scale-110 transition-transform">
+                    <div className={`h-8 w-8 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm group-hover/btn:scale-110 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </div>
                   </button>
                   
                   <button onClick={() => startAnalysis('Girls')} className="group/btn flex items-center justify-between p-4 rounded-xl bg-pink-50/50 border border-pink-100 hover:bg-pink-100 hover:border-pink-200 transition-all shadow-sm">
                     <div>
-                      <p className="font-bold text-base text-pink-900">Girls Report</p>
-                      <p className="text-xs text-pink-500 font-medium mt-0.5">View Statistics</p>
+                      <p className="font-bold text-base text-pink-900">{t('girlsReport')}</p>
+                      <p className="text-xs text-pink-500 font-medium mt-0.5">{t('viewStatistics')}</p>
                     </div>
-                    <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm group-hover/btn:scale-110 transition-transform">
+                    <div className={`h-8 w-8 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm group-hover/btn:scale-110 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </div>
                   </button>
@@ -643,7 +691,7 @@ export default function App() {
             <div className="mt-8 text-center pb-6 opacity-60">
               <div className="flex items-center justify-center gap-2 mt-2">
                 <span className={`w-1.5 h-1.5 rounded-full ${GOOGLE_SCRIPT_URL ? 'bg-emerald-500 animate-pulse' : 'bg-orange-400'}`}></span>
-                <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">{GOOGLE_SCRIPT_URL ? 'System Online' : 'Mock Mode Active'}</span>
+                <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">{GOOGLE_SCRIPT_URL ? t('systemOnline') : t('mockMode')}</span>
               </div>
             </div>
 
@@ -656,15 +704,17 @@ export default function App() {
         <div className="animate-slide-up">
            <Header 
             onHome={handleBack} 
-            title={selectedDivision ? 'Select Class' : 'Select Division'} 
-            subtitle={`${selectedSection}${selectedDivision ? ` • ${selectedDivision}` : ''}`}
+            title={selectedDivision ? t('selectClass') : t('selectDivision')} 
+            subtitle={`${selectedSection === 'Boys' ? t('boys') : t('girls')}${selectedDivision ? ` • ${selectedDivision}` : ''}`}
             showBack 
             isConnected={!!GOOGLE_SCRIPT_URL}
+            lang={lang}
+            t={t}
           />
           <main className="max-w-xl mx-auto px-6 pt-8 pb-20">
             {/* Context Message */}
             {!selectedDivision && (
-              <p className="text-slate-500 mb-6 font-medium">Choose a division.</p>
+              <p className="text-slate-500 mb-6 font-medium">{t('chooseDivision')}</p>
             )}
             
             {!selectedDivision ? (
@@ -682,11 +732,11 @@ export default function App() {
                        </div>
                        <span className="text-xl font-bold text-slate-700 group-hover:text-slate-900">{div}</span>
                     </div>
-                    <svg className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    <svg className={`w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   </button>
                 ))}
                 {availableDivisions.length === 0 && (
-                   <div className="text-center py-12 text-slate-400 bg-white/50 rounded-2xl">No divisions found for {selectedSection}.</div>
+                   <div className="text-center py-12 text-slate-400 bg-white/50 rounded-2xl">{t('noDivisions')} {selectedSection}.</div>
                 )}
               </div>
             ) : (
@@ -705,7 +755,7 @@ export default function App() {
                            <p className="text-slate-500 font-medium uppercase tracking-wide text-xs">{todayStats.monthDay}</p>
                          </div>
                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${todayStats.attendancePercentage > 90 ? 'bg-emerald-100 text-emerald-700' : todayStats.attendancePercentage > 75 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                           Today's Status
+                           {t('todaysStatus')}
                          </div>
                        </div>
 
@@ -713,8 +763,8 @@ export default function App() {
                        <div className="grid grid-cols-2 gap-4 mb-6">
                           {/* Main Stat: Absent Count */}
                           <div className={`rounded-2xl p-4 flex flex-col justify-between ${selectedSection === 'Boys' ? 'bg-blue-50/80 text-blue-900' : 'bg-pink-50/80 text-pink-900'}`}>
-                             <div className="text-3xl font-bold">{todayStats.absentCount}</div>
-                             <div className="text-xs font-semibold opacity-70 uppercase tracking-wide mt-1">Total Absent</div>
+                             <div className="text-3xl font-bold">{n(todayStats.absentCount)}</div>
+                             <div className="text-xs font-semibold opacity-70 uppercase tracking-wide mt-1">{t('totalAbsent')}</div>
                           </div>
 
                           {/* Secondary Stats */}
@@ -722,17 +772,17 @@ export default function App() {
                              {/* Percentage */}
                              <div className="flex-1 bg-white/60 rounded-xl p-3 flex items-center justify-between shadow-sm">
                                 <div>
-                                   <div className="text-lg font-bold text-slate-700">{todayStats.attendancePercentage}%</div>
-                                   <div className="text-[10px] text-slate-400 font-semibold">ATTENDANCE</div>
+                                   <div className="text-lg font-bold text-slate-700">{n(todayStats.attendancePercentage)}%</div>
+                                   <div className="text-[10px] text-slate-400 font-semibold">{t('attendanceMetric')}</div>
                                 </div>
                                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${todayStats.attendancePercentage >= 95 ? 'border-emerald-500 text-emerald-600' : 'border-slate-300 text-slate-400'}`}>
-                                   {todayStats.attendancePercentage >= 95 ? 'A+' : 'Avg'}
+                                   {todayStats.attendancePercentage >= 95 ? 'A+' : '-'}
                                 </div>
                              </div>
                              
                              {/* Most Affected */}
                              <div className="flex-1 bg-white/60 rounded-xl p-3 shadow-sm">
-                                <div className="text-[10px] text-slate-400 font-semibold mb-0.5">MOST AFFECTED</div>
+                                <div className="text-[10px] text-slate-400 font-semibold mb-0.5">{t('mostAffected')}</div>
                                 <div className="text-sm font-bold text-slate-700 truncate">{formatClassName(todayStats.maxAbsenceClass)}</div>
                              </div>
                           </div>
@@ -751,9 +801,9 @@ export default function App() {
                            }
                          `}
                        >
-                         {todayStats.absentCount === 0 ? 'Full Attendance Today' : 'View Absentees'}
+                         {todayStats.absentCount === 0 ? t('fullAttendance') : t('viewAbsentees')}
                          {todayStats.absentCount > 0 && (
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            <svg className={`w-4 h-4 ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                          )}
                        </button>
 
@@ -761,7 +811,7 @@ export default function App() {
                        <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-40 pointer-events-none ${selectedSection === 'Boys' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
                     </div>
                     
-                    <p className="text-slate-500 mt-8 mb-4 font-medium pl-2">Select a class for detailed reports</p>
+                    <p className="text-slate-500 mt-8 mb-4 font-medium px-2">{t('selectClassContext')}</p>
                   </div>
                 )}
                 
@@ -779,7 +829,7 @@ export default function App() {
                     </button>
                   ))}
                    {availableClasses.length === 0 && (
-                     <div className="col-span-2 text-center py-12 text-slate-400 bg-white/50 rounded-2xl">No classes found in {selectedDivision}.</div>
+                     <div className="col-span-2 text-center py-12 text-slate-400 bg-white/50 rounded-2xl">{t('noClasses')} {selectedDivision}.</div>
                   )}
                 </div>
               </>
@@ -794,19 +844,23 @@ export default function App() {
           <Header 
             onHome={handleBack} 
             title={formatClassName(selectedClass)} 
-            subtitle={`${selectedSection} • ${selectedDivision} • Mark Absences`}
+            subtitle={`${selectedSection === 'Boys' ? t('boys') : t('girls')} • ${selectedDivision} • ${t('markAbsences')}`}
             showBack 
             isConnected={!!GOOGLE_SCRIPT_URL}
+            lang={lang}
+            t={t}
           />
           
           <main className="max-w-xl mx-auto px-4 pt-6">
             {/* New Date Selector */}
             <div className="mb-6 flex">
               <DateSelector 
-                label="Attendance Date" 
+                label={t('attendanceDate')} 
                 value={trackingDate} 
                 onChange={setTrackingDate} 
                 accentColor={accentColor} 
+                lang={lang}
+                t={t}
               />
             </div>
 
@@ -848,10 +902,10 @@ export default function App() {
                             {student.name}
                           </h4>
                           <div className="flex items-center gap-2">
-                             <p className={`text-xs ${isAlreadyRecorded || isSelectedLocally ? 'text-red-600/70' : 'text-slate-500'}`}>ID: {student.id}</p>
+                             <p className={`text-xs ${isAlreadyRecorded || isSelectedLocally ? 'text-red-600/70' : 'text-slate-500'}`}>{t('id')} {student.id}</p>
                              {isAlreadyRecorded && (
                                <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
-                                 Recorded Absent
+                                 {t('recordedAbsent')}
                                </span>
                              )}
                           </div>
@@ -883,7 +937,7 @@ export default function App() {
                              }}
                              className="relative z-20 flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-md border border-red-100 hover:bg-red-100 hover:border-red-200 transition-colors shadow-sm active:scale-95"
                            >
-                              <span>Remove Absence</span>
+                              <span>{t('removeAbsence')}</span>
                               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                            </button>
                          )}
@@ -901,8 +955,8 @@ export default function App() {
           {/* Sticky Bottom Action */}
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-white/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40">
             <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
-              <div className="text-sm font-medium text-slate-600 pl-2">
-                <span className="font-bold text-slate-900 text-lg">{markedAbsentKeys.size}</span> Absent
+              <div className="text-sm font-medium text-slate-600 ps-2">
+                <span className="font-bold text-slate-900 text-lg">{n(markedAbsentKeys.size)}</span> {t('absentCount', {count: ''}).replace(/^\d+\s*/, '')}
               </div>
               <Button 
                 variant={selectedSection === 'Boys' ? 'gradient-blue' : 'gradient-pink'} 
@@ -910,7 +964,7 @@ export default function App() {
                 isLoading={isSubmitting}
                 className="flex-1 max-w-[200px]"
               >
-                Submit
+                {t('submit')}
               </Button>
             </div>
           </div>
@@ -922,18 +976,20 @@ export default function App() {
         <div className="animate-fade-in pb-10">
           <Header 
             onHome={handleBack} 
-            title="Analysis" 
-            subtitle={`${selectedClass} (${selectedSection})`}
+            title={t('analysis')} 
+            subtitle={`${selectedClass} (${selectedSection === 'Boys' ? t('boys') : t('girls')})`}
             showBack 
             isConnected={!!GOOGLE_SCRIPT_URL}
+            lang={lang}
+            t={t}
           />
           
           {/* Print Only Header */}
           <div className="hidden print-only print:block text-center mb-6 pt-4">
-            <h1 className="text-2xl font-bold mb-1">Attendance Report</h1>
+            <h1 className="text-2xl font-bold mb-1">{t('attendanceReportTitle')}</h1>
             <p className="text-lg font-medium">{selectedClass} - {selectedSection} ({selectedDivision})</p>
             <p className="text-sm text-gray-500 mt-2">
-              From: <span className="font-bold">{new Date(dateRange.start).toLocaleDateString()}</span> To: <span className="font-bold">{new Date(dateRange.end).toLocaleDateString()}</span>
+              {t('from')}: <span className="font-bold">{formatDate(dateRange.start, lang)}</span> {t('to')}: <span className="font-bold">{formatDate(dateRange.end, lang)}</span>
             </p>
           </div>
 
@@ -943,19 +999,23 @@ export default function App() {
                <div className="flex flex-col gap-4">
                  <div className="flex items-center gap-3">
                    <DateSelector 
-                     label="From" 
+                     label={t('from')} 
                      value={dateRange.start} 
                      onChange={(v) => setDateRange(p => ({...p, start: v}))}
                      accentColor={accentColor} 
+                     lang={lang}
+                     t={t}
                    />
-                   <div className="pt-5 text-slate-300">
+                   <div className={`pt-5 text-slate-300 ${lang === 'ar' ? 'rotate-180' : ''}`}>
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                    </div>
                    <DateSelector 
-                     label="To" 
+                     label={t('to')} 
                      value={dateRange.end} 
                      onChange={(v) => setDateRange(p => ({...p, end: v}))}
                      accentColor={accentColor} 
+                     lang={lang}
+                     t={t}
                    />
                  </div>
                  
@@ -964,7 +1024,7 @@ export default function App() {
                    variant={selectedSection === 'Boys' ? 'gradient-blue' : 'gradient-pink'}
                    fullWidth
                  >
-                   Show Report
+                   {t('showReport')}
                  </Button>
                </div>
             </div>
@@ -974,8 +1034,8 @@ export default function App() {
                 {/* Print Button - Hidden on Print */}
                 <div className="flex justify-between items-center px-2 mb-4 no-print">
                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-800 text-lg">Absence Report</h3>
-                      <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg shadow-sm">Sorted by highest</span>
+                      <h3 className="font-bold text-slate-800 text-lg">{t('attendanceReportTitle')}</h3>
+                      <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg shadow-sm">{t('sortedBy')}</span>
                    </div>
                    <button 
                     onClick={(e) => {
@@ -986,14 +1046,14 @@ export default function App() {
                     className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 transition-all active:scale-95"
                    >
                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                     Print
+                     {t('print')}
                    </button>
                 </div>
 
                 {/* Print Only Table Header */}
                 <div className="hidden print-only mb-2 border-b-2 border-black pb-1 font-bold flex justify-between">
-                  <span>Student Name</span>
-                  <span>Details</span>
+                  <span>{t('studentName')}</span>
+                  <span>{t('details')}</span>
                 </div>
 
                 {/* Results List */}
@@ -1014,40 +1074,38 @@ export default function App() {
                           <div className="flex flex-col w-full">
                             <div className="flex items-center justify-between sm:justify-start gap-4 mb-3 sm:mb-0 w-full sm:w-auto">
                               <div className="flex items-center gap-4">
-                                <div className="text-xs font-mono text-slate-400 w-6">{idx + 1}</div>
+                                <div className="text-xs font-mono text-slate-400 w-6">{n(idx + 1)}</div>
                                 <div>
                                   <h4 className="font-bold text-slate-800">{res.student.name}</h4>
-                                  <p className="text-xs text-slate-500 no-print">{res.absentCount} days absent</p>
+                                  <p className="text-xs text-slate-500 no-print">{t('daysAbsent', {count: n(res.absentCount)})}</p>
                                 </div>
                               </div>
                               
                               {/* Print-only absent count */}
-                              <div className="hidden print-only font-bold text-slate-800 ml-auto">
-                                {res.absentCount > 0 ? `${res.absentCount} Days` : '-'}
+                              <div className="hidden print-only font-bold text-slate-800 ms-auto">
+                                {res.absentCount > 0 ? `${n(res.absentCount)} ${t('daysSuffix')}` : '-'}
                               </div>
                             </div>
 
                             {/* Print-only dates list */}
                             {res.absentCount > 0 && (
-                              <div className="hidden print-only mt-1 pl-10 text-[10px] text-slate-600">
-                                <span className="font-semibold">Dates: </span>
-                                {res.absentDates.map(d => 
-                                  new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                                ).join(', ')}
+                              <div className="hidden print-only mt-1 ps-10 text-[10px] text-slate-600">
+                                <span className="font-semibold">{t('dates')}: </span>
+                                {res.absentDates.map(d => formatDate(d, lang)).join(', ')}
                               </div>
                             )}
                           </div>
                           
                           {/* Screen-only actions */}
-                          <div className="flex items-center gap-3 justify-end no-print mt-3 sm:mt-0 ml-auto sm:ml-0">
+                          <div className="flex items-center gap-3 justify-end no-print mt-3 sm:mt-0 ms-auto sm:ms-0">
                             <div className="relative">
                               {res.absentCount > 0 ? (
                                 <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-bold text-sm border border-red-200 shadow-sm">
-                                  {res.absentCount}
+                                  {n(res.absentCount)}
                                 </div>
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm border border-emerald-200">
-                                  0
+                                  {n(0)}
                                 </div>
                               )}
                             </div>
@@ -1063,7 +1121,7 @@ export default function App() {
                                     : 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100'}
                                 `}
                               >
-                                Check Absent Date
+                                {t('checkAbsentDate')}
                               </button>
                             )}
                           </div>
@@ -1072,7 +1130,7 @@ export default function App() {
                     })
                   ) : (
                      <div className="text-center py-12 bg-white/40 rounded-3xl border-2 border-dashed border-slate-200">
-                       <p className="text-slate-400 font-medium">No students found in this range.</p>
+                       <p className="text-slate-400 font-medium">{t('noStudentsRange')}</p>
                      </div>
                   )}
                 </div>
@@ -1094,11 +1152,11 @@ export default function App() {
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
             </div>
             <div className="text-center mb-6">
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Remove Absence?</h3>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">{t('removeAbsenceTitle')}</h3>
               <p className="text-sm text-slate-600">
-                Are you sure you want to delete the attendance record for <span className="font-bold text-slate-800">{studentToRemove.name}</span> on <span className="font-bold text-slate-800">{new Date(studentToRemove.date).toLocaleDateString()}</span>?
+                {t('removeAbsenceBody', {name: studentToRemove.name, date: formatDate(studentToRemove.date, lang)})}
               </p>
-              <p className="text-xs text-slate-400 mt-2">This action cannot be undone.</p>
+              <p className="text-xs text-slate-400 mt-2">{t('undoWarning')}</p>
             </div>
             
             <div className="flex gap-3">
@@ -1107,7 +1165,7 @@ export default function App() {
                 disabled={isDeleting}
                 className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold text-sm hover:bg-slate-200 transition-colors disabled:opacity-50"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button 
                 onClick={confirmRemoveAbsence}
@@ -1120,10 +1178,10 @@ export default function App() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Deleting...
+                    {t('deleting')}
                   </>
                 ) : (
-                  'Delete'
+                  t('delete')
                 )}
               </button>
             </div>
@@ -1148,7 +1206,7 @@ export default function App() {
             </div>
             
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Absent Dates</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('dates')}</p>
               <div className="flex flex-col gap-2">
                 {attendanceHistory
                   .filter(r => 
@@ -1162,12 +1220,7 @@ export default function App() {
                   .map((date, i) => (
                     <div key={i} className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium border border-red-100 flex items-center gap-3">
                       <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                      {new Date(date).toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
+                      {formatDate(date, lang)}
                     </div>
                   ))
                 }
@@ -1175,7 +1228,7 @@ export default function App() {
             </div>
             
             <div className="p-4 border-t border-slate-50 bg-slate-50">
-              <Button fullWidth onClick={() => setSelectedStudentDetail(null)} variant="secondary" className="rounded-xl">Close</Button>
+              <Button fullWidth onClick={() => setSelectedStudentDetail(null)} variant="secondary" className="rounded-xl">{t('close')}</Button>
             </div>
           </div>
         </div>
@@ -1193,7 +1246,7 @@ export default function App() {
             {/* Header */}
             <div className={`px-6 py-5 border-b flex justify-between items-center ${selectedSection === 'Boys' ? 'bg-blue-600 text-white' : 'bg-pink-600 text-white'}`}>
               <div>
-                <p className="text-xs font-medium opacity-80 uppercase tracking-wide">TODAY'S ABSENTEES</p>
+                <p className="text-xs font-medium opacity-80 uppercase tracking-wide">{t('todaysAbsentees')}</p>
                 <h3 className="font-bold text-xl">{todayStats.todayDateStr}</h3>
               </div>
               <button onClick={() => setShowTodayStatsModal(false)} className="p-2 bg-white/20 rounded-full hover:bg-white/30 text-white">
@@ -1205,7 +1258,7 @@ export default function App() {
             <div className="p-4 overflow-y-auto">
               {todayStats.absenteesList.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
-                  <p>Everyone is present today!</p>
+                  <p>{t('everyonePresent')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1217,11 +1270,11 @@ export default function App() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-800 text-sm">{record.name}</p>
-                          <p className="text-xs text-slate-500">Class: {formatClassName(record.class)}</p>
+                          <p className="text-xs text-slate-500">{t('class')}: {formatClassName(record.class)}</p>
                         </div>
                       </div>
                       <div className="text-xs font-mono font-medium text-slate-400 bg-white px-2 py-1 rounded border">
-                         ID:{record.studentId}
+                         {t('id')} {n(record.studentId)}
                       </div>
                     </div>
                   ))}
@@ -1232,7 +1285,7 @@ export default function App() {
             {/* Footer */}
             <div className="p-4 border-t border-slate-100 bg-slate-50">
               <Button fullWidth onClick={() => setShowTodayStatsModal(false)} variant="secondary" className="rounded-xl shadow-none border-slate-200">
-                Close List
+                {t('closeList')}
               </Button>
             </div>
           </div>
