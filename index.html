@@ -67,6 +67,26 @@
         -webkit-backdrop-filter: blur(16px);
         border-top: 1px solid rgba(255, 255, 255, 0.5);
       }
+
+      /* Print Styles */
+      @media print {
+        @page { margin: 1cm; size: portrait; }
+        body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; }
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        .glass, .glass-dark { background: none !important; border: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+        /* Reset containers to full width */
+        .max-w-xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        /* List formatting */
+        .print-list-item { 
+          break-inside: avoid; 
+          border-bottom: 1px solid #ddd !important; 
+          padding: 8px 0 !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+        }
+      }
+      .print-only { display: none; }
     </style>
   <script type="importmap">
 {

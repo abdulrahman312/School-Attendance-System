@@ -1,3 +1,4 @@
+
 /**
  * ==========================================================================================
  * GOOGLE SHEET & BACKEND SETUP INSTRUCTIONS
@@ -14,6 +15,7 @@
  *    - B1: Name
  *    - C1: Section (Must be exactly "Boys" or "Girls")
  *    - D1: Class (e.g., "10-A", "9-B")
+ *    - E1: Division (e.g., "Wing A", "Block 1")
  *    
  *    (Fill this sheet with your student data)
  * 
@@ -23,13 +25,14 @@
  *    - C1: Name
  *    - D1: Section
  *    - E1: Class
+ *    - F1: Division
  * 
  * 5. Create the API (Google Apps Script):
  *    - In your Google Sheet, go to Extensions > Apps Script.
  *    - Delete any code there and paste the code found at the bottom of this file (in the comment block).
  *    - Click "Deploy" > "New Deployment".
  *    - Select type: "Web app".
- *    - Description: "Attendance API".
+ *    - Description: "Attendance API V2".
  *    - Execute as: "Me".
  *    - Who has access: "Anyone" (Crucial for the web app to access it).
  *    - Click "Deploy".
@@ -47,17 +50,19 @@ export const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys_Rb
 // If URL is empty, the app will use this mock data for demonstration
 export const MOCK_DATA = {
   students: [
-    { id: '101', name: 'Ahmed Khan', section: 'Boys', class: 'Grade 10' },
-    { id: '102', name: 'Bilal Ahmed', section: 'Boys', class: 'Grade 10' },
-    { id: '103', name: 'Charlie Davis', section: 'Boys', class: 'Grade 9' },
-    { id: '201', name: 'Sara Ali', section: 'Girls', class: 'Grade 10' },
-    { id: '202', name: 'Fatima Noor', section: 'Girls', class: 'Grade 10' },
-    { id: '203', name: 'Zainab Bibi', section: 'Girls', class: 'Grade 9' },
+    { id: '101', name: 'Ahmed Khan', section: 'Boys', class: '10-A', division: 'Wing A' },
+    { id: '102', name: 'Bilal Ahmed', section: 'Boys', class: '10-A', division: 'Wing A' },
+    { id: '103', name: 'Charlie Davis', section: 'Boys', class: '9-B', division: 'Wing B' },
+    { id: '104', name: 'David Smith', section: 'Boys', class: '8-C', division: 'Wing C' },
+    { id: '201', name: 'Sara Ali', section: 'Girls', class: '10-A', division: 'Block 1' },
+    { id: '202', name: 'Fatima Noor', section: 'Girls', class: '10-B', division: 'Block 1' },
+    { id: '203', name: 'Zainab Bibi', section: 'Girls', class: '9-A', division: 'Block 2' },
+    { id: '204', name: 'Ayesha Khan', section: 'Girls', class: '8-C', division: 'Block 3' },
   ],
   attendance: [
-    { date: '2023-10-25', studentId: '101', name: 'Ahmed Khan', section: 'Boys', class: 'Grade 10' },
-    { date: '2023-10-26', studentId: '101', name: 'Ahmed Khan', section: 'Boys', class: 'Grade 10' },
-    { date: '2023-10-25', studentId: '201', name: 'Sara Ali', section: 'Girls', class: 'Grade 10' },
+    { date: '2023-10-25', studentId: '101', name: 'Ahmed Khan', section: 'Boys', class: '10-A', division: 'Wing A' },
+    { date: '2023-10-26', studentId: '101', name: 'Ahmed Khan', section: 'Boys', class: '10-A', division: 'Wing A' },
+    { date: '2023-10-25', studentId: '201', name: 'Sara Ali', section: 'Girls', class: '10-A', division: 'Block 1' },
   ]
 } as const;
 
@@ -80,21 +85,24 @@ export const MOCK_DATA = {
  *     id: String(row[0]),
  *     name: row[1],
  *     section: row[2],
- *     class: String(row[3])
+ *     class: String(row[3]),
+ *     division: String(row[4] || "")
  *   })).filter(s => s.id !== "");
  *   
  *   const attendance = attendanceData.slice(1).map(row => {
  *     // Handle Date objects or Strings safely to return YYYY-MM-DD
  *     let dateStr = row[0];
  *     if (Object.prototype.toString.call(dateStr) === '[object Date]') {
- *       dateStr = dateStr.toISOString().split('T')[0];
+ *        // Use script timezone to prevent day shifting which happens with toISOString() in non-UTC zones
+ *        dateStr = Utilities.formatDate(dateStr, Session.getScriptTimeZone(), "yyyy-MM-dd");
  *     }
  *     return {
  *       date: String(dateStr).substring(0, 10), 
  *       studentId: String(row[1]),
  *       name: row[2],
  *       section: row[3],
- *       class: String(row[4])
+ *       class: String(row[4]),
+ *       division: String(row[5] || "")
  *     };
  *   }).filter(a => a.studentId !== "");
  *   
@@ -109,18 +117,48 @@ export const MOCK_DATA = {
  *   try {
  *     const data = JSON.parse(e.postData.contents);
  *     
- *     // data.records should be an array of { date, studentId, name, section, class }
+ *     // ACTION: DELETE
+ *     if (data.action === "delete") {
+ *       const targetId = String(data.studentId);
+ *       const targetDate = String(data.date).substring(0, 10); // Ensure YYYY-MM-DD
+ *       
+ *       const range = attendanceSheet.getDataRange();
+ *       const values = range.getValues();
+ *       let rowDeleted = false;
+ *       
+ *       // Loop backwards to delete safely
+ *       for (let i = values.length - 1; i >= 1; i--) {
+ *         let rowDate = values[i][0];
+ *         if (Object.prototype.toString.call(rowDate) === '[object Date]') {
+ *            rowDate = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM-dd");
+ *         }
+ *         rowDate = String(rowDate).substring(0, 10);
+ *         const rowId = String(values[i][1]);
+ *         
+ *         if (rowId === targetId && rowDate === targetDate) {
+ *           attendanceSheet.deleteRow(i + 1); // +1 because sheet is 1-indexed
+ *           rowDeleted = true;
+ *           // We break after deleting one match for that date/student combo
+ *           break; 
+ *         }
+ *       }
+ *       
+ *       return ContentService.createTextOutput(JSON.stringify({ status: "success", deleted: rowDeleted }))
+ *         .setMimeType(ContentService.MimeType.JSON);
+ *     }
+ *     
+ *     // ACTION: APPEND (Default)
  *     if (data.records && data.records.length > 0) {
  *       const rows = data.records.map(r => [
  *         r.date,
  *         r.studentId,
  *         r.name,
  *         r.section,
- *         r.class
+ *         r.class,
+ *         r.division || ""
  *       ]);
  *       
- *       // Append all rows at once
- *       attendanceSheet.getRange(attendanceSheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
+ *       attendanceSheet.getRange(attendanceSheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
  *     }
  *     
  *     return ContentService.createTextOutput(JSON.stringify({ status: "success" }))

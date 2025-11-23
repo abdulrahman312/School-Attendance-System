@@ -1,3 +1,4 @@
+
 import { APIResponse, AttendanceRecord, Student } from '../types';
 import { GOOGLE_SCRIPT_URL, MOCK_DATA } from '../constants';
 
@@ -26,7 +27,17 @@ export const fetchSchoolData = async (): Promise<APIResponse> => {
   }
 
   try {
-    const response = await fetch(GOOGLE_SCRIPT_URL);
+    // Append timestamp to prevent browser caching of the GET request
+    // We do NOT use headers like 'Cache-Control' because GAS Web Apps don't support CORS preflight (OPTIONS)
+    const cacheBuster = `?t=${new Date().getTime()}`;
+    const url = GOOGLE_SCRIPT_URL.includes('?') 
+      ? `${GOOGLE_SCRIPT_URL}&t=${new Date().getTime()}` 
+      : `${GOOGLE_SCRIPT_URL}${cacheBuster}`;
+
+    const response = await fetch(url, {
+      method: 'GET'
+    });
+
     if (!response.ok) throw new Error('Failed to fetch data');
     const data = await response.json();
     return data;
@@ -63,6 +74,31 @@ export const saveAttendance = async (records: AttendanceRecord[]): Promise<boole
     return response.ok;
   } catch (error) {
     console.error("API Error:", error);
+    return false;
+  }
+};
+
+export const deleteAttendance = async (studentId: string, date: string): Promise<boolean> => {
+   // 1. Check if URL is missing
+   if (!GOOGLE_SCRIPT_URL) {
+    console.warn("No Google Script URL provided. simulating delete.");
+    await delay(1000);
+    return true;
+  }
+
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        action: 'delete',
+        studentId, 
+        date 
+      }),
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error("API Delete Error:", error);
     return false;
   }
 };

@@ -5,6 +5,7 @@ export interface Student {
   name: string;
   section: SectionType;
   class: string;
+  division: string;
 }
 
 export interface AttendanceRecord {
@@ -13,6 +14,7 @@ export interface AttendanceRecord {
   name: string;
   section: SectionType;
   class: string;
+  division: string;
 }
 
 export interface AnalysisResult {
