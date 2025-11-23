@@ -176,7 +176,7 @@ export const formatDate = (dateString: string, lang: Lang) => {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return dateString;
   
-  return date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', {
+  return date.toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -185,5 +185,5 @@ export const formatDate = (dateString: string, lang: Lang) => {
 };
 
 export const getMonthName = (date: Date, lang: Lang) => {
-  return date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { month: 'long', weekday: 'long' });
+  return date.toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { month: 'long', weekday: 'long' });
 };

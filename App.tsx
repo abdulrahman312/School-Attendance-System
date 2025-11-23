@@ -395,9 +395,9 @@ export default function App() {
     });
 
     return {
-      todayDateStr: new Date().toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
+      todayDateStr: new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
       dayNumber: n(new Date().getDate()),
-      monthDay: new Date().toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', month: 'short' }),
+      monthDay: new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { weekday: 'long', month: 'short' }),
       totalStudents,
       absentCount,
       attendancePercentage,
@@ -617,10 +617,10 @@ export default function App() {
             <div className="mb-8 text-center relative">
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-gradient-to-tr from-slate-200 to-transparent rounded-full blur-3xl opacity-30 pointer-events-none"></div>
                <h2 className="relative text-6xl sm:text-7xl font-black text-slate-800/90 tracking-tighter tabular-nums leading-none mb-1" dir="ltr">
-                 {currentTime.toLocaleTimeString(lang === 'ar' ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                 {currentTime.toLocaleTimeString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                </h2>
                <p className="relative text-lg sm:text-xl font-medium text-slate-500">
-                 {currentTime.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                 {currentTime.toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                </p>
             </div>
 
