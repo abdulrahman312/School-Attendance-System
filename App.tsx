@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { fetchSchoolData, saveAttendance, deleteAttendance } from './services/api';
 import { Student, AttendanceRecord, SectionType, APIResponse } from './types';
@@ -533,6 +532,13 @@ export default function App() {
   const submitAttendance = async () => {
     if (!selectedSection || !selectedClass) return;
     
+    // START CHANGE: Check if trackingDate is valid before submitting
+    if (!trackingDate) {
+      alert(t('pleaseSelectDate'));
+      return;
+    }
+    // END CHANGE
+    
     setIsSubmitting(true);
     const records: AttendanceRecord[] = Array.from(markedAbsentKeys).map((key: string) => {
       const student = currentClassStudents.find(s => generateKey(s.id, s.name) === key);
@@ -681,7 +687,7 @@ export default function App() {
           <main className="max-w-2xl mx-auto px-6 pt-4 flex-1 w-full">
             
             {/* Date & Time Widget */}
-            <div className="mb-8 text-center relative">
+            <div className="mb-6 text-center relative">
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-gradient-to-tr from-slate-200 to-transparent rounded-full blur-3xl opacity-30 pointer-events-none"></div>
                {/* Updated Time Color */}
                <h2 className="relative text-6xl sm:text-7xl font-black tracking-tighter tabular-nums leading-none mb-6 text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-red-600 drop-shadow-sm" dir="ltr">

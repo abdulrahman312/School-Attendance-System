@@ -1,4 +1,5 @@
 
+
 export type Lang = 'en' | 'ar';
 
 export const translations = {
@@ -33,6 +34,7 @@ export const translations = {
     markAbsences: "Mark Absences",
     attendanceDate: "Attendance Date",
     selectDate: "Select Date",
+    pleaseSelectDate: "Please select a valid date first.",
     
     recordedAbsent: "Recorded Absent",
     removeAbsence: "Remove Absence",
@@ -128,6 +130,7 @@ export const translations = {
     markAbsences: "تسجيل الغياب",
     attendanceDate: "تاريخ التحضير",
     selectDate: "اختر التاريخ",
+    pleaseSelectDate: "يرجى اختيار تاريخ صحيح أولاً.",
     
     recordedAbsent: "مسجل غياب",
     removeAbsence: "إزالة الغياب",
