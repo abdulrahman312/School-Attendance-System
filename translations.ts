@@ -11,6 +11,7 @@ export const translations = {
     boysSection: "Boys Section",
     girlsSection: "Girls Section",
     manageAttendance: "Manage Attendance",
+    totalStudents: "Total Students",
     
     analyticsReports: "Analytics Reports",
     boysReport: "Boys Report",
@@ -28,6 +29,7 @@ export const translations = {
     selectClassContext: "Select a class for detailed reports",
     
     goBack: "Go Back",
+    goHome: "Home",
     markAbsences: "Mark Absences",
     attendanceDate: "Attendance Date",
     selectDate: "Select Date",
@@ -62,13 +64,14 @@ export const translations = {
     deleting: "Deleting...",
     
     todaysStatus: "Today's Status",
+    statusOn: "Status: {date}",
     totalAbsent: "Total Absent",
     attendanceMetric: "ATTENDANCE",
     mostAffected: "MOST AFFECTED",
-    fullAttendance: "Full Attendance Today",
+    fullAttendance: "Full Attendance",
     viewAbsentees: "View Absentees",
-    todaysAbsentees: "TODAY'S ABSENTEES",
-    everyonePresent: "Everyone is present today!",
+    todaysAbsentees: "Absentees List",
+    everyonePresent: "Everyone is present!",
     closeList: "Close List",
     close: "Close",
     
@@ -81,7 +84,18 @@ export const translations = {
     noAbsences: "No Absences",
     failedToDelete: "Failed to delete record",
     failedToSave: "Failed to save data",
-    class: "Class"
+    class: "Class",
+    studentsCount: "{count} Students",
+    
+    searchStudent: "Search Student",
+    searchReport: "Single Student Report",
+    enterStudentId: "Enter Student ID",
+    search: "Search",
+    studentNotFound: "Student not found with ID: {id}",
+    studentFound: "Student Found",
+    totalAbsences: "Total Absences",
+    allTime: "All Time",
+    searchPlaceholder: "e.g. 101"
   },
   ar: {
     appTitle: "نظام متابعة الحضور",
@@ -92,6 +106,7 @@ export const translations = {
     boysSection: "قسم البنين",
     girlsSection: "قسم البنات",
     manageAttendance: "إدارة الحضور",
+    totalStudents: "إجمالي الطلاب",
     
     analyticsReports: "تقارير التحليل",
     boysReport: "تقرير البنين",
@@ -109,6 +124,7 @@ export const translations = {
     selectClassContext: "اختر صفاً لعرض التقارير التفصيلية",
     
     goBack: "رجوع",
+    goHome: "الرئيسية",
     markAbsences: "تسجيل الغياب",
     attendanceDate: "تاريخ التحضير",
     selectDate: "اختر التاريخ",
@@ -143,13 +159,14 @@ export const translations = {
     deleting: "جاري الحذف...",
     
     todaysStatus: "حالة اليوم",
+    statusOn: "الحالة: {date}",
     totalAbsent: "إجمالي الغياب",
     attendanceMetric: "نسبة الحضور",
     mostAffected: "الأكثر تأثراً",
-    fullAttendance: "حضور كامل اليوم",
+    fullAttendance: "حضور كامل",
     viewAbsentees: "عرض الغائبين",
-    todaysAbsentees: "الغائبون اليوم",
-    everyonePresent: "الجميع حاضر اليوم!",
+    todaysAbsentees: "قائمة الغائبين",
+    everyonePresent: "الجميع حاضر!",
     closeList: "إغلاق القائمة",
     close: "إغلاق",
     
@@ -162,7 +179,18 @@ export const translations = {
     noAbsences: "لا يوجد غياب",
     failedToDelete: "فشل حذف السجل",
     failedToSave: "فشل حفظ البيانات",
-    class: "الصف"
+    class: "الصف",
+    studentsCount: "{count} طالب",
+    
+    searchStudent: "بحث عن طالب",
+    searchReport: "تقرير طالب مفرد",
+    enterStudentId: "أدخل رقم الطالب",
+    search: "بحث",
+    studentNotFound: "لم يتم العثور على طالب بالرقم: {id}",
+    studentFound: "بيانات الطالب",
+    totalAbsences: "إجمالي مرات الغياب",
+    allTime: "كل الأوقات",
+    searchPlaceholder: "مثال: ١٠١"
   }
 };
 
