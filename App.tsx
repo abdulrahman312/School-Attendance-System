@@ -532,12 +532,10 @@ export default function App() {
   const submitAttendance = async () => {
     if (!selectedSection || !selectedClass) return;
     
-    // START CHANGE: Check if trackingDate is valid before submitting
     if (!trackingDate) {
       alert(t('pleaseSelectDate'));
       return;
     }
-    // END CHANGE
     
     setIsSubmitting(true);
     const records: AttendanceRecord[] = Array.from(markedAbsentKeys).map((key: string) => {
@@ -662,11 +660,7 @@ export default function App() {
             </button>
 
             <div className="w-20 h-20 bg-white rounded-full shadow-xl shadow-slate-200 flex items-center justify-center mb-3 overflow-hidden relative z-10 p-1 ring-1 ring-slate-100">
-               <img 
-                 src="https://i.postimg.cc/Njt09jhV/meis.jpg" 
-                 alt="MEIS Logo" 
-                 className="w-full h-full object-contain hover:scale-105 transition-transform duration-500" 
-               />
+               <img src="https://i.ibb.co/bgFrgXkW/meis.png" alt="MEIS Logo" className="w-full h-full object-contain" />
             </div>
             
             <h1 className="text-xl md:text-2xl font-extrabold leading-tight mb-3 flex flex-wrap justify-center items-center gap-x-3">
@@ -1260,18 +1254,18 @@ export default function App() {
             {/* Search Box */}
             <div className="glass p-6 rounded-3xl shadow-lg mb-8">
                <label className="block text-sm font-bold text-slate-600 mb-2">{t('enterStudentId')}</label>
-               <div className="flex gap-2">
+               <div className="flex flex-col gap-3">
                  <input 
                    type="text" 
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleSearchStudent()}
                    placeholder={t('searchPlaceholder')}
-                   className="flex-1 bg-white border border-slate-200 text-slate-800 text-lg rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                   className="w-full bg-white border border-slate-200 text-slate-800 text-lg rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                  />
                  <button 
                    onClick={handleSearchStudent}
-                   className="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-900 transition-colors shadow-lg shadow-slate-300/50"
+                   className="w-full bg-slate-800 text-white rounded-xl py-3 font-bold hover:bg-slate-900 transition-colors shadow-lg shadow-slate-300/50"
                  >
                    {t('search')}
                  </button>
