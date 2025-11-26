@@ -35,7 +35,7 @@ const Header = ({
             className="group flex items-center gap-2 px-3 py-2 -ms-2 rounded-full bg-white/90 shadow-sm border border-slate-200 text-slate-700 hover:bg-white hover:shadow-md transition-all active:scale-95 me-1"
           >
             <div className="bg-slate-100 p-1 rounded-full group-hover:bg-slate-200 transition-colors">
-               <svg className={`w-5 h-5 animate-pulse ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"></path></svg>
+               <svg className={`w-5 h-5 animate-pulse ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"></path></svg>
             </div>
             <span className="text-sm font-bold pe-1 hidden sm:inline">{t('goBack')}</span>
           </button>
@@ -161,8 +161,7 @@ const DateSelector = ({
           <span className="text-slate-700 font-semibold text-sm font-mono tracking-tight whitespace-nowrap" dir="ltr">{displayDate}</span>
         </div>
         <div 
-          className={`h-full px-3 border-s border-slate-100 flex items-center justify-center pointer-events-none transition-colors group-active:bg-slate-50 ${accentColor === 'pink' ? 'text-pink-500' : 'text-blue-500'}`}
-        >
+          className={`h-full px-3 border-s border-slate-100 flex items-center justify-center pointer-events-none transition-colors group-active:bg-slate-50 ${accentColor === 'pink' ? 'text-pink-500' : 'text-blue-500'}`}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
         </div>
       </div>
@@ -216,6 +215,8 @@ export default function App() {
   
   // Analysis Dashboard State
   const [dashboardDate, setDashboardDate] = useState<string>(getLocalTodayDate());
+  const [showTodayStatsModal, setShowTodayStatsModal] = useState(false);
+  const [expandedAbsentClass, setExpandedAbsentClass] = useState<string | null>(null);
 
   // Search Student State
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,7 +234,6 @@ export default function App() {
   });
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<Student | null>(null);
   const [showReport, setShowReport] = useState(false);
-  const [showTodayStatsModal, setShowTodayStatsModal] = useState(false);
 
   // Time State
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -299,6 +299,7 @@ export default function App() {
     setSelectedStudentDetail(null);
     setShowReport(false);
     setShowTodayStatsModal(false);
+    setExpandedAbsentClass(null);
     setStudentToRemove(null);
     setSearchResult(null);
     setSearchQuery('');
@@ -456,6 +457,17 @@ export default function App() {
     };
 
   }, [students, attendanceHistory, selectedSection, selectedDivision, dashboardDate, lang]);
+  
+  // Group Absentees By Class
+  const absenteesByClass = useMemo(() => {
+    if (!dashboardStats) return {};
+    const groups: Record<string, AttendanceRecord[]> = {};
+    dashboardStats.absenteesList.forEach(r => {
+      if (!groups[r.class]) groups[r.class] = [];
+      groups[r.class].push(r);
+    });
+    return groups;
+  }, [dashboardStats]);
 
   const formatClassName = (cls: string) => {
     if (cls.includes('-')) return cls;
@@ -883,7 +895,10 @@ export default function App() {
 
                        {/* Action Button */}
                        <button 
-                         onClick={() => setShowTodayStatsModal(true)}
+                         onClick={() => {
+                           setShowTodayStatsModal(true);
+                           setExpandedAbsentClass(null);
+                         }}
                          disabled={dashboardStats.absentCount === 0}
                          className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-95 flex items-center justify-center gap-2
                            ${dashboardStats.absentCount === 0 
@@ -1413,9 +1428,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Today/Date Stats Modal */}
+      {/* Today/Date Stats Modal with Grouped View */}
       {showTodayStatsModal && dashboardStats && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center px-4 py-6 sm:p-6 no-print">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 sm:p-6 no-print">
           <div 
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" 
             onClick={() => setShowTodayStatsModal(false)}
@@ -1442,22 +1457,47 @@ export default function App() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {dashboardStats.absenteesList.map((record, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${selectedSection === 'Boys' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
-                          {record.name.charAt(0)}
+                  {Object.keys(absenteesByClass)
+                    .sort((a, b) => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare(a, b))
+                    .map((className) => {
+                      const students = absenteesByClass[className];
+                      return (
+                        <div key={className} className="border border-slate-100 rounded-xl overflow-hidden">
+                           <button 
+                             onClick={() => setExpandedAbsentClass(expandedAbsentClass === className ? null : className)}
+                             className={`w-full flex items-center justify-between p-3 transition-colors ${expandedAbsentClass === className ? 'bg-slate-50' : 'bg-white'}`}
+                           >
+                              <div className="flex items-center gap-3">
+                                 <span className={`font-bold text-lg ${selectedSection === 'Boys' ? 'text-blue-600' : 'text-pink-600'}`}>{formatClassName(className)}</span>
+                                 <span className="text-xs font-bold text-red-700 bg-red-50 px-2 py-1 rounded-md border border-red-100">
+                                    {n(students.length)} {t('absentLabel')}
+                                 </span>
+                              </div>
+                              <div className={`text-slate-400 transition-transform duration-200 ${expandedAbsentClass === className ? 'rotate-180' : ''}`}>
+                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                              </div>
+                           </button>
+                           
+                           {expandedAbsentClass === className && (
+                              <div className="bg-slate-50/50 p-3 pt-0 border-t border-slate-100">
+                                 {students.map((record, idx) => (
+                                    <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                                       <div className="flex items-center gap-2">
+                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${selectedSection === 'Boys' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
+                                             {record.name.charAt(0)}
+                                          </div>
+                                          <p className="text-sm font-semibold text-slate-700">{record.name}</p>
+                                       </div>
+                                       <div className="text-[10px] font-mono text-slate-400">
+                                          {n(record.studentId)}
+                                       </div>
+                                    </div>
+                                 ))}
+                              </div>
+                           )}
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-800 text-sm">{record.name}</p>
-                          <p className="text-xs text-slate-500">{t('class')}: {formatClassName(record.class)}</p>
-                        </div>
-                      </div>
-                      <div className="text-xs font-mono font-medium text-slate-400 bg-white px-2 py-1 rounded border">
-                         {t('id')} {n(record.studentId)}
-                      </div>
-                    </div>
-                  ))}
+                      );
+                  })}
                 </div>
               )}
             </div>

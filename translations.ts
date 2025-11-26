@@ -40,6 +40,7 @@ export const translations = {
     removeAbsence: "Remove Absence",
     
     absentCount: "{count} Absent",
+    absentLabel: "Absent",
     submit: "Submit",
     
     analysis: "Analysis",
@@ -136,6 +137,7 @@ export const translations = {
     removeAbsence: "إزالة الغياب",
     
     absentCount: "{count} غائب",
+    absentLabel: "غياب",
     submit: "إرسال",
     
     analysis: "التحليل",
