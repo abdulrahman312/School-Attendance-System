@@ -815,7 +815,7 @@ export default function App() {
       {/* ADMIN LOGIN MODAL */}
       {mode === AppMode.ADMIN_LOGIN && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
-           <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative">
+           <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative text-slate-800">
               <button onClick={handleHome} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -826,7 +826,7 @@ export default function App() {
                    value={passwordInput}
                    onChange={(e) => setPasswordInput(e.target.value)}
                    placeholder={t('password')}
-                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-500 outline-none text-center text-lg"
+                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-500 outline-none text-center text-lg bg-white text-slate-900 placeholder:text-slate-400"
                  />
                  <Button onClick={handleAdminLogin} fullWidth>{t('login')}</Button>
               </div>
