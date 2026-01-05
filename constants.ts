@@ -1,4 +1,5 @@
 
+
 /**
  * ==========================================================================================
  * GOOGLE SHEET & BACKEND SETUP INSTRUCTIONS
@@ -32,7 +33,7 @@
  *    - Delete any code there and paste the code found at the bottom of this file (in the comment block).
  *    - Click "Deploy" > "New Deployment".
  *    - Select type: "Web app".
- *    - Description: "Attendance API V2".
+ *    - Description: "Attendance API V3 - Admin".
  *    - Execute as: "Me".
  *    - Who has access: "Anyone" (Crucial for the web app to access it).
  *    - Click "Deploy".
@@ -90,10 +91,8 @@ export const MOCK_DATA = {
  *   })).filter(s => s.id !== "");
  *   
  *   const attendance = attendanceData.slice(1).map(row => {
- *     // Handle Date objects or Strings safely to return YYYY-MM-DD
  *     let dateStr = row[0];
  *     if (Object.prototype.toString.call(dateStr) === '[object Date]') {
- *        // Use script timezone to prevent day shifting which happens with toISOString() in non-UTC zones
  *        dateStr = Utilities.formatDate(dateStr, Session.getScriptTimeZone(), "yyyy-MM-dd");
  *     }
  *     return {
@@ -113,20 +112,20 @@ export const MOCK_DATA = {
  * function doPost(e) {
  *   const ss = SpreadsheetApp.getActiveSpreadsheet();
  *   const attendanceSheet = ss.getSheetByName("Attendance");
+ *   const studentSheet = ss.getSheetByName("Students");
  *   
  *   try {
  *     const data = JSON.parse(e.postData.contents);
  *     
- *     // ACTION: DELETE
+ *     // --- ACTION: DELETE ATTENDANCE ---
  *     if (data.action === "delete") {
  *       const targetId = String(data.studentId);
- *       const targetDate = String(data.date).substring(0, 10); // Ensure YYYY-MM-DD
+ *       const targetDate = String(data.date).substring(0, 10);
  *       
  *       const range = attendanceSheet.getDataRange();
  *       const values = range.getValues();
  *       let rowDeleted = false;
  *       
- *       // Loop backwards to delete safely
  *       for (let i = values.length - 1; i >= 1; i--) {
  *         let rowDate = values[i][0];
  *         if (Object.prototype.toString.call(rowDate) === '[object Date]') {
@@ -136,18 +135,110 @@ export const MOCK_DATA = {
  *         const rowId = String(values[i][1]);
  *         
  *         if (rowId === targetId && rowDate === targetDate) {
- *           attendanceSheet.deleteRow(i + 1); // +1 because sheet is 1-indexed
+ *           attendanceSheet.deleteRow(i + 1);
  *           rowDeleted = true;
- *           // We break after deleting one match for that date/student combo
  *           break; 
  *         }
  *       }
- *       
  *       return ContentService.createTextOutput(JSON.stringify({ status: "success", deleted: rowDeleted }))
  *         .setMimeType(ContentService.MimeType.JSON);
  *     }
+ * 
+ *     // --- ACTION: TRANSFER STUDENT ---
+ *     if (data.action === "transfer") {
+ *       const studentId = String(data.studentId);
+ *       const targetClass = String(data.targetClass);
+ *       const targetSection = String(data.targetSection);
+ *       const targetDivision = String(data.targetDivision);
+ *       
+ *       // 1. Handle Students Sheet
+ *       const sRange = studentSheet.getDataRange();
+ *       const sValues = sRange.getValues();
+ *       let studentRowIndex = -1;
+ *       let studentData = null;
+ * 
+ *       // Find and Extract Student
+ *       for (let i = 1; i < sValues.length; i++) {
+ *         if (String(sValues[i][0]) === studentId) {
+ *           studentRowIndex = i + 1;
+ *           studentData = [...sValues[i]];
+ *           break;
+ *         }
+ *       }
+ * 
+ *       if (studentRowIndex === -1 || !studentData) {
+ *          return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Student not found" }))
+ *            .setMimeType(ContentService.MimeType.JSON);
+ *       }
+ * 
+ *       // Update Student Data
+ *       studentData[2] = targetSection; // Col C: Section
+ *       studentData[3] = targetClass;   // Col D: Class
+ *       studentData[4] = targetDivision;// Col E: Division
+ *       
+ *       // Delete old row
+ *       studentSheet.deleteRow(studentRowIndex);
+ *       
+ *       // Find correct insertion index (Alphabetical by Name in new Class Group)
+ *       // Refresh values after deletion
+ *       const newSValues = studentSheet.getDataRange().getValues();
+ *       let insertIndex = newSValues.length + 1; // Default to end
+ *       
+ *       // Iterate to find insertion point
+ *       // We look for the first row in the TARGET CLASS where the existing name is > student name
+ *       // OR append at end of the target class block
+ *       
+ *       let foundClassBlock = false;
+ *       let inserted = false;
+ *       
+ *       for (let i = 1; i < newSValues.length; i++) {
+ *         const rowClass = String(newSValues[i][3]);
+ *         const rowSection = String(newSValues[i][2]);
+ *         const rowDivision = String(newSValues[i][4]);
+ *         const rowName = String(newSValues[i][1]);
+ *         
+ *         // Check if this row belongs to the target group
+ *         const isTargetGroup = (rowClass === targetClass && rowSection === targetSection && rowDivision === targetDivision);
+ *         
+ *         if (isTargetGroup) {
+ *           foundClassBlock = true;
+ *           // Compare names (Simple comparison usually works for basic Arabic ordering in JS environments)
+ *           if (rowName.localeCompare(studentData[1], 'ar') > 0) {
+ *             insertIndex = i + 1;
+ *             inserted = true;
+ *             break;
+ *           }
+ *         } else if (foundClassBlock) {
+ *           // We passed the block and didn't insert (meaning our student is last in alphabetical order)
+ *           insertIndex = i + 1;
+ *           inserted = true;
+ *           break;
+ *         }
+ *       }
+ *       
+ *       // Insert the row
+ *       studentSheet.insertRowBefore(insertIndex);
+ *       studentSheet.getRange(insertIndex, 1, 1, studentData.length).setValues([studentData]);
+ *       
+ *       // 2. Handle Attendance Sheet (Update history)
+ *       const aRange = attendanceSheet.getDataRange();
+ *       const aValues = aRange.getValues();
+ *       
+ *       for (let i = 1; i < aValues.length; i++) {
+ *         if (String(aValues[i][1]) === studentId) {
+ *            // Update columns: Section(D/3), Class(E/4), Division(F/5)
+ *            // Arrays are 0-indexed, Sheets 1-indexed. aValues[i] is row i+1.
+ *            attendanceSheet.getRange(i + 1, 4).setValue(targetSection);
+ *            attendanceSheet.getRange(i + 1, 5).setValue(targetClass);
+ *            attendanceSheet.getRange(i + 1, 6).setValue(targetDivision);
+ *         }
+ *       }
+ * 
+ *       return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+ *         .setMimeType(ContentService.MimeType.JSON);
+ *     }
  *     
- *     // ACTION: APPEND (Default)
+ *     // --- ACTION: SAVE ATTENDANCE (Default) ---
  *     if (data.records && data.records.length > 0) {
  *       const rows = data.records.map(r => [
  *         r.date,
@@ -157,7 +248,6 @@ export const MOCK_DATA = {
  *         r.class,
  *         r.division || ""
  *       ]);
- *       
  *       attendanceSheet.getRange(attendanceSheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
  *     }
  *     

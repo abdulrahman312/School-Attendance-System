@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { fetchSchoolData, saveAttendance, deleteAttendance } from './services/api';
+import { fetchSchoolData, saveAttendance, deleteAttendance, transferStudent } from './services/api';
 import { Student, AttendanceRecord, SectionType, APIResponse } from './types';
 import { Button } from './components/Button';
 import { GOOGLE_SCRIPT_URL } from './constants';
@@ -191,7 +192,10 @@ enum AppMode {
   TRACKING,
   ANALYZE_SELECT,
   ANALYZING,
-  SEARCH_STUDENT
+  SEARCH_STUDENT,
+  ADMIN_LOGIN,
+  ADMIN_DASHBOARD,
+  ADMIN_TRANSFER
 }
 
 export default function App() {
@@ -199,6 +203,7 @@ export default function App() {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Data State
   const [students, setStudents] = useState<Student[]>([]);
@@ -235,6 +240,14 @@ export default function App() {
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<Student | null>(null);
   const [showReport, setShowReport] = useState(false);
 
+  // Admin & Transfer State
+  const [passwordInput, setPasswordInput] = useState('');
+  const [transferDivision, setTransferDivision] = useState('');
+  const [transferStudentId, setTransferStudentId] = useState('');
+  const [transferTargetClass, setTransferTargetClass] = useState('');
+  const [foundTransferStudent, setFoundTransferStudent] = useState<Student | null>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+
   // Time State
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -243,23 +256,6 @@ export default function App() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
   }, [lang]);
-
-  // Back Button History Handling
-  useEffect(() => {
-    // When we enter a mode that is NOT home, we push a state so back button works
-    if (mode !== AppMode.HOME) {
-      window.history.pushState({ mode }, '', window.location.href);
-    }
-
-    const handlePopState = (event: PopStateEvent) => {
-      // Logic for "Going Back" when browser back is pressed
-      // We essentially just call handleBack() logic but prevent loops
-      handleBackLogic(true);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [mode]); // Re-bind when mode changes is fine, but we need to be careful not to infinite push
 
   // Translation Helper
   const t = (key: keyof typeof translations['en'], params?: Record<string, string | number>) => {
@@ -304,16 +300,21 @@ export default function App() {
     setSearchResult(null);
     setSearchQuery('');
     setDashboardDate(getLocalTodayDate());
+    setPasswordInput('');
+    setTransferDivision('');
+    setTransferStudentId('');
+    setFoundTransferStudent(null);
+    setTransferTargetClass('');
   };
 
   const handleHome = () => {
     resetSelection();
     setSelectedSection(null);
     setMode(AppMode.HOME);
-    // Clear history cleanly? Hard in SPA without router, but pushing Home state is ok
+    setIsAdmin(false); // Logout on home
   };
 
-  const handleBackLogic = (fromBrowserBack = false) => {
+  const handleBack = () => {
     if (mode === AppMode.SEARCH_STUDENT) {
       setMode(AppMode.ANALYZE_SELECT);
       setSearchResult(null);
@@ -325,22 +326,20 @@ export default function App() {
       setMode(AppMode.ANALYZE_SELECT);
       setSelectedClass('');
       setShowReport(false);
-    } else if ((mode === AppMode.TRACK_SELECT || mode === AppMode.ANALYZE_SELECT) && selectedDivision) {
-      setSelectedDivision('');
+    } else if (mode === AppMode.TRACK_SELECT || mode === AppMode.ANALYZE_SELECT) {
+      if (selectedDivision) setSelectedDivision('');
+      else handleHome();
+    } else if (mode === AppMode.ADMIN_DASHBOARD) {
+      handleHome();
+    } else if (mode === AppMode.ADMIN_TRANSFER) {
+      setMode(AppMode.ADMIN_DASHBOARD);
+      setTransferDivision('');
+      setTransferStudentId('');
+      setFoundTransferStudent(null);
+    } else if (mode === AppMode.ADMIN_LOGIN) {
+      handleHome();
     } else {
-      resetSelection();
-      setSelectedSection(null);
-      setMode(AppMode.HOME);
-    }
-  };
-
-  const handleBack = () => {
-    // If we click the UI back button, we should just go back in history if possible
-    // to keep history stack clean, OR just call logic.
-    // Calling logic directly works but leaves forward history. 
-    // Ideally: window.history.back() and let popstate handle it.
-    if (mode !== AppMode.HOME) {
-      window.history.back();
+      handleHome();
     }
   };
 
@@ -371,6 +370,12 @@ export default function App() {
     return Array.from(divisions);
   }, [students, selectedSection]);
 
+  const allDivisionsGlobal = useMemo(() => {
+    const divisions = new Set<string>();
+    students.forEach(s => { if(s.division) divisions.add(s.division); });
+    return Array.from(divisions).sort();
+  }, [students]);
+
   const availableClasses = useMemo(() => {
     if (!selectedSection || !selectedDivision) return [];
     const classes = new Set<string>();
@@ -381,6 +386,18 @@ export default function App() {
     });
     return Array.from(classes);
   }, [students, selectedSection, selectedDivision]);
+
+  const transferTargetClasses = useMemo(() => {
+    if (!transferDivision) return [];
+    const classes = new Set<string>();
+    // Find all classes associated with this division in global student list
+    students.forEach(s => {
+      if (s.division === transferDivision && s.class) {
+        classes.add(s.class);
+      }
+    });
+    return Array.from(classes).sort();
+  }, [students, transferDivision]);
 
   const currentClassStudents = useMemo(() => {
     if (!selectedSection || !selectedDivision || !selectedClass) return [];
@@ -407,8 +424,6 @@ export default function App() {
   // Dashboard Stats (Dynamic Date)
   const dashboardStats = useMemo(() => {
     if (!selectedSection || !selectedDivision) return null;
-
-    // Use selected dashboard date or today
     const targetDate = dashboardDate; 
     const targetDateObj = new Date(targetDate);
     const isToday = targetDate === getLocalTodayDate();
@@ -427,7 +442,7 @@ export default function App() {
     const absentCount = targetRecords.length;
     const attendancePercentage = totalStudents > 0 
       ? Math.round(((totalStudents - absentCount) / totalStudents) * 100) 
-      : 100; // Default to 100 if no students
+      : 100;
 
     const classAbsenceCounts: Record<string, number> = {};
     targetRecords.forEach(r => {
@@ -436,7 +451,6 @@ export default function App() {
     
     let maxAbsenceClass = "None";
     let maxAbsenceCount = 0;
-    
     Object.entries(classAbsenceCounts).forEach(([cls, count]) => {
       if (count > maxAbsenceCount) {
         maxAbsenceCount = count;
@@ -458,7 +472,6 @@ export default function App() {
 
   }, [students, attendanceHistory, selectedSection, selectedDivision, dashboardDate, lang]);
   
-  // Group Absentees By Class
   const absenteesByClass = useMemo(() => {
     if (!dashboardStats) return {};
     const groups: Record<string, AttendanceRecord[]> = {};
@@ -469,10 +482,7 @@ export default function App() {
     return groups;
   }, [dashboardStats]);
 
-  const formatClassName = (cls: string) => {
-    if (cls.includes('-')) return cls;
-    return cls;
-  };
+  const formatClassName = (cls: string) => cls;
 
   // --- Actions ---
 
@@ -483,7 +493,7 @@ export default function App() {
 
   const startAnalysis = (section: SectionType) => {
     setSelectedSection(section);
-    setDashboardDate(getLocalTodayDate()); // Reset to today when entering
+    setDashboardDate(getLocalTodayDate()); 
     setMode(AppMode.ANALYZE_SELECT);
   };
 
@@ -509,23 +519,17 @@ export default function App() {
     if (newSet.has(key)) newSet.delete(key);
     else newSet.add(key);
     setMarkedAbsentKeys(newSet);
-    
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(5); } catch(e) {}
     }
   };
 
   const handleRemoveAbsence = (student: Student) => {
-    setStudentToRemove({
-      id: student.id,
-      name: student.name,
-      date: trackingDate
-    });
+    setStudentToRemove({ id: student.id, name: student.name, date: trackingDate });
   };
 
   const confirmRemoveAbsence = async () => {
     if (!studentToRemove) return;
-    
     setIsDeleting(true);
     const success = await deleteAttendance(studentToRemove.id, studentToRemove.date);
     setIsDeleting(false);
@@ -542,19 +546,15 @@ export default function App() {
   };
 
   const submitAttendance = async () => {
-    if (!selectedSection || !selectedClass) return;
-    
-    if (!trackingDate) {
+    if (!selectedSection || !selectedClass || !trackingDate) {
       alert(t('pleaseSelectDate'));
       return;
     }
-    
     setIsSubmitting(true);
     const records: AttendanceRecord[] = Array.from(markedAbsentKeys).map((key: string) => {
       const student = currentClassStudents.find(s => generateKey(s.id, s.name) === key);
       const studentId = student ? student.id : key.split('::')[0];
       const studentName = student ? student.name : key.split('::')[1];
-
       return {
         date: trackingDate,
         studentId: String(studentId),
@@ -564,10 +564,8 @@ export default function App() {
         division: selectedDivision
       };
     });
-
     const success = await saveAttendance(records);
     setIsSubmitting(false);
-
     if (success) {
       setAttendanceHistory(prev => [...prev, ...records]);
       setSelectedClass('');
@@ -580,14 +578,8 @@ export default function App() {
   const handleSearchStudent = () => {
     if (!searchQuery.trim()) return;
     const query = searchQuery.trim().toLowerCase();
-    
-    // Find student in current list or all lists? 
-    // Usually searched within the section or global. Let's do Global for flexibility, or Section constrained.
-    // The requirement implies finding a student.
     const student = students.find(s => String(s.id).toLowerCase() === query);
-    
     if (student) {
-      // Find all absences
       const absences = attendanceHistory.filter(r => String(r.studentId).toLowerCase() === query);
       setSearchResult({ student, absences });
       setSearchError('');
@@ -599,10 +591,8 @@ export default function App() {
 
   const analysisResults = useMemo(() => {
     if (mode !== AppMode.ANALYZING || !dateRange.start || !dateRange.end) return null;
-    
     return currentClassStudents.map(student => {
       const studentKey = generateKey(student.id, student.name);
-      
       const absences = attendanceHistory.filter(record => {
         const recordDate = new Date(record.date);
         const start = new Date(dateRange.start);
@@ -618,9 +608,65 @@ export default function App() {
     }).sort((a, b) => b.absentCount - a.absentCount);
   }, [mode, dateRange, attendanceHistory, currentClassStudents]);
 
+  // --- Admin Logic ---
+
+  const handleAdminLogin = () => {
+    if (passwordInput === "Meis@1234") {
+      setIsAdmin(true);
+      setMode(AppMode.ADMIN_DASHBOARD);
+      setPasswordInput('');
+    } else {
+      alert(t('invalidPassword'));
+    }
+  };
+
+  const findTransferStudent = () => {
+    if (!transferStudentId.trim()) return;
+    const student = students.find(s => String(s.id) === String(transferStudentId).trim());
+    if (student) {
+      setFoundTransferStudent(student);
+    } else {
+      alert(t('studentNotFound', {id: transferStudentId}));
+      setFoundTransferStudent(null);
+    }
+  };
+
+  const executeTransfer = async () => {
+    if (!foundTransferStudent || !transferTargetClass || !transferDivision) return;
+    
+    setIsTransferring(true);
+    // Find target Section based on the division/class. Usually we can assume it from division or check existing students
+    // Since we filtered classes by transferDivision, we can grab a student from that class to find the Section,
+    // or just pass 'Boys'/'Girls' if we knew it. But we don't strictly know.
+    // Let's find any student in that class/division to get the section.
+    const referenceStudent = students.find(s => s.division === transferDivision && s.class === transferTargetClass);
+    // Fallback: If no student exists in that target class yet, we might need to ask? 
+    // Or we can assume section from division name? 
+    // Safe bet: Use the reference or keep original section if unknown (risky).
+    // Better: Prompt says "change section of a student" is button name, implying section might change.
+    // We will use the reference student's section.
+    const targetSection = referenceStudent ? referenceStudent.section : foundTransferStudent.section;
+
+    const success = await transferStudent(foundTransferStudent.id, transferTargetClass, targetSection, transferDivision);
+    
+    if (success) {
+      alert(t('transferSuccess'));
+      // Update local state to reflect change immediately (or reload data)
+      setStudents(prev => prev.map(s => s.id === foundTransferStudent.id ? { ...s, class: transferTargetClass, division: transferDivision, section: targetSection } : s));
+      // Also update attendance history locally if needed, but fetchSchoolData is safer if we want full sync
+      setFoundTransferStudent(null);
+      setTransferStudentId('');
+      setTransferTargetClass('');
+    } else {
+      alert(t('transferFail'));
+    }
+    setIsTransferring(false);
+  };
+
   // --- Background Styling ---
   
   const getBackgroundClass = () => {
+    if (mode === AppMode.ADMIN_DASHBOARD || mode === AppMode.ADMIN_TRANSFER || mode === AppMode.ADMIN_LOGIN) return 'from-slate-800 to-slate-900 text-slate-100';
     if (selectedSection === 'Boys') return 'from-blue-50 via-cyan-50/30 to-white text-blue-900';
     if (selectedSection === 'Girls') return 'from-rose-50 via-pink-50/30 to-white text-rose-900';
     return 'from-slate-100 via-zinc-50 to-white text-slate-900'; 
@@ -634,19 +680,12 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 relative overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         <div className="relative flex items-center justify-center">
-           {/* Ambient Glow */}
            <div className="absolute w-48 h-48 bg-gradient-to-r from-blue-400 to-red-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-           
-           {/* Outer Spinner */}
            <div className="w-24 h-24 rounded-full border-4 border-transparent border-t-blue-600 border-b-red-600 animate-spin shadow-lg z-10"></div>
-           
-           {/* Inner Spinner (Reverse) */}
            <div 
             className="absolute w-16 h-16 rounded-full border-4 border-transparent border-l-red-500 border-r-blue-600 animate-spin z-10" 
             style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}
            ></div>
-
-           {/* Center Dot */}
            <div className="absolute w-4 h-4 bg-gradient-to-br from-blue-600 to-red-600 rounded-full shadow-md z-10 animate-pulse"></div>
         </div>
         <h2 className="mt-10 text-lg font-bold text-slate-600 animate-pulse tracking-[0.2em] uppercase">{t('startingSystem')}</h2>
@@ -695,7 +734,6 @@ export default function App() {
             {/* Date & Time Widget */}
             <div className="mb-6 text-center relative">
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-56 h-56 bg-gradient-to-tr from-slate-200 to-transparent rounded-full blur-3xl opacity-30 pointer-events-none"></div>
-               {/* Updated Time Color */}
                <h2 className="relative text-6xl sm:text-7xl font-black tracking-tighter tabular-nums leading-none mb-6 text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-red-600 drop-shadow-sm" dir="ltr">
                  {currentTime.toLocaleTimeString(lang === 'ar' ? 'ar-EG-u-nu-arab' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                </h2>
@@ -733,10 +771,9 @@ export default function App() {
               />
             </div>
 
-            {/* Enhanced Reports Section */}
-            <div className="relative group rounded-[2rem] p-[2px] bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 shadow-xl shadow-slate-200 transition-transform hover:scale-[1.01] duration-300">
+            {/* Reports Section */}
+            <div className="relative group rounded-[2rem] p-[2px] bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 shadow-xl shadow-slate-200 transition-transform hover:scale-[1.01] duration-300 mb-8">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 blur-lg opacity-20 group-hover:opacity-40 transition-opacity rounded-[2rem]"></div>
-              
               <div className="relative bg-white/80 backdrop-blur-xl rounded-[1.9rem] p-6">
                 <div className="flex items-center gap-3 mb-5">
                    <div className="p-2 bg-slate-800 rounded-lg text-white shadow-lg shadow-slate-400/20">
@@ -744,37 +781,196 @@ export default function App() {
                    </div>
                    <h3 className="text-xl font-bold text-slate-800 tracking-tight">{t('analyticsReports')}</h3>
                 </div>
-                
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => startAnalysis('Boys')} className="group/btn flex items-center justify-between p-4 rounded-xl bg-blue-50/50 border border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all shadow-sm">
                     <div>
                       <p className="font-bold text-base text-blue-900">{t('boysReport')}</p>
                       <p className="text-xs text-blue-500 font-medium mt-0.5">{t('viewStatistics')}</p>
                     </div>
-                    <div className={`h-8 w-8 bg-white rounded-full flex items-center justify-center text-blue-600 shadow-sm group-hover/btn:scale-110 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                    </div>
                   </button>
-                  
                   <button onClick={() => startAnalysis('Girls')} className="group/btn flex items-center justify-between p-4 rounded-xl bg-pink-50/50 border border-pink-100 hover:bg-pink-100 hover:border-pink-200 transition-all shadow-sm">
                     <div>
                       <p className="font-bold text-base text-pink-900">{t('girlsReport')}</p>
                       <p className="text-xs text-pink-500 font-medium mt-0.5">{t('viewStatistics')}</p>
                     </div>
-                    <div className={`h-8 w-8 bg-white rounded-full flex items-center justify-center text-pink-600 shadow-sm group-hover/btn:scale-110 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                    </div>
                   </button>
                 </div>
               </div>
             </div>
-            
-            <div className="mt-8 text-center pb-6 opacity-60">
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <span className={`w-1.5 h-1.5 rounded-full ${GOOGLE_SCRIPT_URL ? 'bg-emerald-500 animate-pulse' : 'bg-orange-400'}`}></span>
-                <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">{GOOGLE_SCRIPT_URL ? t('systemOnline') : t('mockMode')}</span>
+          </main>
+          
+          {/* Admin Login Button */}
+          <footer className="py-4 text-center">
+             <button 
+               onClick={() => setMode(AppMode.ADMIN_LOGIN)}
+               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-400 hover:text-slate-600 text-xs font-semibold transition-colors"
+             >
+               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+               {t('adminLogin')}
+             </button>
+          </footer>
+        </div>
+      )}
+
+      {/* ADMIN LOGIN MODAL */}
+      {mode === AppMode.ADMIN_LOGIN && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+           <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl relative">
+              <button onClick={handleHome} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">{t('adminLogin')}</h2>
+              <div className="space-y-4">
+                 <input 
+                   type="password" 
+                   value={passwordInput}
+                   onChange={(e) => setPasswordInput(e.target.value)}
+                   placeholder={t('password')}
+                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-500 outline-none text-center text-lg"
+                 />
+                 <Button onClick={handleAdminLogin} fullWidth>{t('login')}</Button>
               </div>
-            </div>
+           </div>
+        </div>
+      )}
+
+      {/* ADMIN DASHBOARD */}
+      {mode === AppMode.ADMIN_DASHBOARD && (
+        <div className="animate-slide-up min-h-screen text-slate-100">
+           <Header 
+            onHome={handleHome}
+            onBack={handleHome}
+            title={t('adminDashboard')} 
+            showBack 
+            isConnected={!!GOOGLE_SCRIPT_URL}
+            lang={lang}
+            t={t}
+          />
+          <main className="max-w-xl mx-auto px-6 pt-10">
+             <div className="grid grid-cols-1 gap-4">
+                <button 
+                  onClick={() => setMode(AppMode.ADMIN_TRANSFER)}
+                  className="p-6 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all active:scale-95 flex items-center justify-between group"
+                >
+                   <div className="flex items-center gap-4">
+                      <div className="p-3 bg-indigo-500 rounded-xl shadow-lg shadow-indigo-500/30">
+                         <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                      </div>
+                      <div className="text-start">
+                         <h3 className="font-bold text-lg">{t('changeStudentSection')}</h3>
+                         <p className="text-sm text-slate-300">{t('transferStudent')}</p>
+                      </div>
+                   </div>
+                   <svg className={`w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform ${lang === 'ar' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+             </div>
+          </main>
+        </div>
+      )}
+
+      {/* ADMIN TRANSFER FLOW */}
+      {mode === AppMode.ADMIN_TRANSFER && (
+        <div className="animate-slide-up min-h-screen text-slate-100">
+           <Header 
+            onHome={handleHome}
+            onBack={() => setMode(AppMode.ADMIN_DASHBOARD)}
+            title={t('transferStudent')} 
+            showBack 
+            isConnected={!!GOOGLE_SCRIPT_URL}
+            lang={lang}
+            t={t}
+          />
+          <main className="max-w-xl mx-auto px-6 pt-6">
+            
+            {/* Step 1: Select Target Division */}
+            {!transferDivision ? (
+               <div>
+                  <h3 className="text-lg font-bold mb-4 text-slate-200">{t('selectTargetDivision')}</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                     {allDivisionsGlobal.map(div => (
+                        <button 
+                           key={div} 
+                           onClick={() => setTransferDivision(div)}
+                           className="p-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-start font-bold transition-all"
+                        >
+                           {div}
+                        </button>
+                     ))}
+                  </div>
+               </div>
+            ) : !foundTransferStudent ? (
+               /* Step 2: Enter ID */
+               <div className="animate-fade-in">
+                  <div className="bg-white/10 p-4 rounded-2xl border border-white/10 mb-6">
+                     <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">{t('selectTargetDivision')}</p>
+                     <div className="flex justify-between items-center">
+                        <span className="text-xl font-bold">{transferDivision}</span>
+                        <button onClick={() => setTransferDivision('')} className="text-xs bg-white/20 px-2 py-1 rounded hover:bg-white/30">{t('changeStudentSection')}</button>
+                     </div>
+                  </div>
+
+                  <h3 className="text-lg font-bold mb-3 text-slate-200">{t('enterStudentId')}</h3>
+                  <div className="flex gap-3">
+                     <input 
+                       type="text" 
+                       value={transferStudentId}
+                       onChange={(e) => setTransferStudentId(e.target.value)}
+                       className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 text-white placeholder-white/30 focus:bg-white/20 outline-none"
+                       placeholder="ID"
+                     />
+                     <Button onClick={findTransferStudent}>{t('search')}</Button>
+                  </div>
+               </div>
+            ) : (
+               /* Step 3: Confirm & Select Class */
+               <div className="animate-fade-in">
+                   <div className="bg-white/10 p-6 rounded-3xl border border-white/10 mb-6 relative overflow-hidden">
+                      <div className="relative z-10">
+                         <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">{t('confirmTransfer')}</h3>
+                         
+                         <div className="grid grid-cols-2 gap-6 mb-6">
+                            <div>
+                               <p className="text-xs text-slate-400 font-bold uppercase mb-1">{t('currentDetails')}</p>
+                               <p className="text-xl font-bold">{foundTransferStudent.name}</p>
+                               <p className="opacity-70 text-sm">ID: {foundTransferStudent.id}</p>
+                               <p className="opacity-70 text-sm">{foundTransferStudent.class} • {foundTransferStudent.section}</p>
+                               <p className="opacity-70 text-sm">{foundTransferStudent.division}</p>
+                            </div>
+                            
+                            <div className="bg-indigo-500/20 p-3 rounded-xl border border-indigo-500/30">
+                               <p className="text-xs text-indigo-200 font-bold uppercase mb-1">{t('newDetails')}</p>
+                               <p className="font-bold">{transferDivision}</p>
+                               <p className="text-sm opacity-80 mb-2">{t('targetClass')}:</p>
+                               
+                               <select 
+                                 value={transferTargetClass} 
+                                 onChange={(e) => setTransferTargetClass(e.target.value)}
+                                 className="w-full bg-slate-900/50 border border-indigo-400/50 rounded-lg p-2 text-sm outline-none"
+                               >
+                                  <option value="">{t('selectClassPlaceholder')}</option>
+                                  {transferTargetClasses.map(cls => (
+                                     <option key={cls} value={cls}>{cls}</option>
+                                  ))}
+                               </select>
+                            </div>
+                         </div>
+                         
+                         <div className="flex gap-3">
+                            <button onClick={() => setFoundTransferStudent(null)} className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 font-bold text-sm transition-colors">
+                               {t('cancel')}
+                            </button>
+                            <button 
+                              onClick={executeTransfer} 
+                              disabled={isTransferring || !transferTargetClass}
+                              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/40"
+                            >
+                               {isTransferring ? t('transferring') : t('confirmTransfer')}
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+               </div>
+            )}
           </main>
         </div>
       )}

@@ -98,7 +98,25 @@ export const translations = {
     studentFound: "Student Found",
     totalAbsences: "Total Absences",
     allTime: "All Time",
-    searchPlaceholder: "e.g. 101"
+    searchPlaceholder: "e.g. 101",
+
+    // Admin
+    adminLogin: "Admin Login",
+    password: "Password",
+    login: "Login",
+    invalidPassword: "Invalid Password",
+    adminDashboard: "Admin Dashboard",
+    changeStudentSection: "Change Student Section",
+    transferStudent: "Transfer Student",
+    selectTargetDivision: "Select Target Division",
+    targetClass: "Target Class",
+    confirmTransfer: "Confirm Transfer",
+    transferring: "Transferring...",
+    transferSuccess: "Student transferred successfully!",
+    transferFail: "Failed to transfer student.",
+    currentDetails: "Current Details",
+    newDetails: "New Details",
+    selectClassPlaceholder: "Select Class",
   },
   ar: {
     appTitle: "نظام متابعة الحضور",
@@ -195,7 +213,25 @@ export const translations = {
     studentFound: "بيانات الطالب",
     totalAbsences: "إجمالي مرات الغياب",
     allTime: "كل الأوقات",
-    searchPlaceholder: "مثال: ١٠١"
+    searchPlaceholder: "مثال: ١٠١",
+
+    // Admin
+    adminLogin: "دخول المشرف",
+    password: "كلمة المرور",
+    login: "دخول",
+    invalidPassword: "كلمة المرور غير صحيحة",
+    adminDashboard: "لوحة تحكم المشرف",
+    changeStudentSection: "نقل طالب",
+    transferStudent: "نقل طالب",
+    selectTargetDivision: "اختر القسم الجديد",
+    targetClass: "الصف الجديد",
+    confirmTransfer: "تأكيد النقل",
+    transferring: "جاري النقل...",
+    transferSuccess: "تم نقل الطالب بنجاح!",
+    transferFail: "فشل نقل الطالب",
+    currentDetails: "البيانات الحالية",
+    newDetails: "البيانات الجديدة",
+    selectClassPlaceholder: "اختر الصف",
   }
 };
 

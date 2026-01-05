@@ -1,5 +1,6 @@
+
 import { GOOGLE_SCRIPT_URL, MOCK_DATA } from '../constants';
-import { APIResponse, AttendanceRecord } from '../types';
+import { APIResponse, AttendanceRecord, Student } from '../types';
 
 export const fetchSchoolData = async (): Promise<APIResponse> => {
   if (!GOOGLE_SCRIPT_URL) {
