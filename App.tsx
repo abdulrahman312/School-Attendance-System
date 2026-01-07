@@ -5,6 +5,7 @@ import { Student, AttendanceRecord, SectionType, APIResponse } from './types';
 import { Button } from './components/Button';
 import { GOOGLE_SCRIPT_URL } from './constants';
 import { translations, Lang, toArNum, formatDate } from './translations';
+import { checkDivisionPassword } from './auth';
 
 // --- UI Components ---
 
@@ -248,6 +249,12 @@ export default function App() {
   const [foundTransferStudent, setFoundTransferStudent] = useState<Student | null>(null);
   const [isTransferring, setIsTransferring] = useState(false);
 
+  // Division Password State
+  const [showDivPasswordModal, setShowDivPasswordModal] = useState(false);
+  const [divPasswordInput, setDivPasswordInput] = useState('');
+  const [divPasswordError, setDivPasswordError] = useState(false);
+  const [pendingDivision, setPendingDivision] = useState('');
+
   // Time State
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -305,6 +312,10 @@ export default function App() {
     setTransferStudentId('');
     setFoundTransferStudent(null);
     setTransferTargetClass('');
+    setDivPasswordInput('');
+    setDivPasswordError(false);
+    setShowDivPasswordModal(false);
+    setPendingDivision('');
   };
 
   const handleHome = () => {
@@ -498,7 +509,27 @@ export default function App() {
   };
 
   const selectDivision = (div: string) => {
-    setSelectedDivision(div);
+    if (mode === AppMode.TRACK_SELECT) {
+      // Require password for tracking
+      setPendingDivision(div);
+      setDivPasswordInput('');
+      setDivPasswordError(false);
+      setShowDivPasswordModal(true);
+    } else {
+      // Analysis Mode - No password
+      setSelectedDivision(div);
+    }
+  };
+
+  const handleDivisionLogin = () => {
+    if (checkDivisionPassword(pendingDivision, divPasswordInput)) {
+      setSelectedDivision(pendingDivision);
+      setShowDivPasswordModal(false);
+      setPendingDivision('');
+      setDivPasswordInput('');
+    } else {
+      setDivPasswordError(true);
+    }
   };
 
   const confirmClass = (cls: string) => {
@@ -831,6 +862,41 @@ export default function App() {
                  <Button onClick={handleAdminLogin} fullWidth>{t('login')}</Button>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* DIVISION PASSWORD MODAL */}
+      {showDivPasswordModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-slide-up">
+            <h3 className="text-xl font-bold mb-2 text-slate-800 text-center">{t('enterDivisionPassword')}</h3>
+            <p className="text-xs text-slate-500 mb-6 text-center">{t('divisionPasswordRequired')}</p>
+            
+            <input 
+              type="password" 
+              value={divPasswordInput} 
+              onChange={e => { 
+                setDivPasswordInput(e.target.value); 
+                setDivPasswordError(false); 
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleDivisionLogin()}
+              className={`w-full p-4 border rounded-2xl mb-2 text-center text-lg font-bold tracking-widest outline-none bg-white text-slate-900 ${divPasswordError ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200 focus:border-blue-500'}`} 
+              placeholder="••••••••" 
+              autoFocus 
+            />
+            
+            {divPasswordError && (
+              <p className="text-red-500 text-xs text-center mb-4 font-bold flex items-center justify-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {t('accessDenied')}
+              </p>
+            )}
+            
+            <div className="mt-4 flex flex-col gap-2">
+              <Button fullWidth onClick={handleDivisionLogin}>{t('login')}</Button>
+              <Button fullWidth variant="ghost" onClick={() => { setShowDivPasswordModal(false); setPendingDivision(''); }}>{t('cancel')}</Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1299,6 +1365,7 @@ export default function App() {
             t={t}
           />
           
+          {/* Print Header that only shows in print mode */}
           <div className="hidden print-only print:block text-center mb-6 pt-4">
             <h1 className="text-2xl font-bold mb-1">{t('attendanceReportTitle')}</h1>
             <p className="text-lg font-medium">{selectedClass} - {selectedSection} ({selectedDivision})</p>
@@ -1350,11 +1417,8 @@ export default function App() {
                       <span className="text-xs font-medium text-slate-500 bg-white px-2 py-1 rounded-lg shadow-sm">{t('sortedBy')}</span>
                    </div>
                    <button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setTimeout(() => window.print(), 50);
-                    }} 
+                    type="button"
+                    onClick={() => window.print()}
                     className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 transition-all active:scale-95"
                    >
                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>

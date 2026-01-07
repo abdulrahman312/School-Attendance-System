@@ -1,5 +1,4 @@
 
-
 export type Lang = 'en' | 'ar';
 
 export const translations = {
@@ -117,6 +116,11 @@ export const translations = {
     currentDetails: "Current Details",
     newDetails: "New Details",
     selectClassPlaceholder: "Select Class",
+
+    // Division Password
+    enterDivisionPassword: "Enter Division Password",
+    divisionPasswordRequired: "A password is required to record attendance.",
+    accessDenied: "Access Denied: Incorrect Password",
   },
   ar: {
     appTitle: "نظام متابعة الحضور",
@@ -232,6 +236,11 @@ export const translations = {
     currentDetails: "البيانات الحالية",
     newDetails: "البيانات الجديدة",
     selectClassPlaceholder: "اختر الصف",
+
+    // Division Password
+    enterDivisionPassword: "أدخل كلمة مرور القسم",
+    divisionPasswordRequired: "مطلوب كلمة مرور لتسجيل الحضور لهذا القسم.",
+    accessDenied: "تم الرفض: كلمة المرور خاطئة",
   }
 };
 
