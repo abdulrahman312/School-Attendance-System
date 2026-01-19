@@ -29,7 +29,7 @@ const Header = ({
   t: (key: keyof typeof translations['en'], params?: any) => string
 }) => (
   <header className="sticky top-0 z-50 px-6 py-4 glass-dark shadow-sm no-print" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-    <div className="flex items-center justify-between max-w-xl mx-auto">
+    <div className="flex items-center justify-between max-w-xl md:max-w-7xl mx-auto">
       <div className="flex items-center gap-2 sm:gap-3">
         {showBack && (
           <button 
@@ -760,7 +760,7 @@ export default function App() {
             </div>
           </header>
 
-          <main className="max-w-2xl mx-auto px-6 pt-4 flex-1 w-full">
+          <main className="max-w-xl md:max-w-5xl mx-auto px-6 pt-4 flex-1 w-full">
             
             {/* Date & Time Widget */}
             <div className="mb-6 text-center relative">
@@ -830,15 +830,47 @@ export default function App() {
             </div>
           </main>
           
-          {/* Admin Login Button */}
-          <footer className="py-4 text-center">
-             <button 
-               onClick={() => setMode(AppMode.ADMIN_LOGIN)}
-               className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-400 hover:text-slate-600 text-xs font-semibold transition-colors"
-             >
-               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-               {t('adminLogin')}
-             </button>
+          {/* Footer */}
+          <footer className="py-8 text-center mt-auto w-full relative z-10">
+             {/* Admin Button */}
+             <div className="mb-6">
+               <button 
+                 onClick={() => setMode(AppMode.ADMIN_LOGIN)}
+                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100/50 text-slate-500 hover:text-slate-700 hover:bg-slate-100 text-xs font-semibold transition-all border border-slate-200/50"
+               >
+                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                 {t('adminLogin')}
+               </button>
+             </div>
+
+             {/* Copyright & Logos */}
+             <div className="max-w-xl md:max-w-5xl mx-auto px-6 border-t border-slate-200/60 pt-6" dir="ltr">
+                {/* Desktop View: Sides & Center */}
+                <div className="hidden md:flex items-center justify-between">
+                   <div className="flex items-center gap-3 opacity-60 hover:opacity-100 transition-opacity">
+                      <img src="https://i.ibb.co/bgFrgXkW/meis.png" alt="MEIS Logo" className="w-10 h-10 object-contain" />
+                   </div>
+                   
+                   <p className="text-[11px] text-slate-400 font-medium tracking-wide uppercase">
+                     © 2026 MEIS-AlMuruj Attendance Tracking Portal. All rights reserved.
+                   </p>
+
+                   <div className="flex items-center gap-3 opacity-60 hover:opacity-100 transition-opacity">
+                      <img src="https://i.ibb.co/cScRz5Tc/ataa.png" alt="Ataa Logo" className="w-10 h-10 object-contain" />
+                   </div>
+                </div>
+
+                {/* Mobile View: Text Top, Images Bottom Together */}
+                <div className="md:hidden flex flex-col items-center gap-4">
+                   <p className="text-[10px] text-slate-400 font-medium tracking-wide leading-relaxed px-4">
+                     © 2026 MEIS-AlMuruj Attendance Tracking Portal. All rights reserved.
+                   </p>
+                   <div className="flex items-center justify-center gap-8 opacity-80">
+                      <img src="https://i.ibb.co/bgFrgXkW/meis.png" alt="MEIS Logo" className="w-10 h-10 object-contain" />
+                      <img src="https://i.ibb.co/cScRz5Tc/ataa.png" alt="Ataa Logo" className="w-10 h-10 object-contain" />
+                   </div>
+                </div>
+             </div>
           </footer>
         </div>
       )}
@@ -912,8 +944,8 @@ export default function App() {
             lang={lang}
             t={t}
           />
-          <main className="max-w-xl mx-auto px-6 pt-10">
-             <div className="grid grid-cols-1 gap-4">
+          <main className="max-w-xl md:max-w-4xl mx-auto px-6 pt-10">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button 
                   onClick={() => setMode(AppMode.ADMIN_TRANSFER)}
                   className="p-6 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all active:scale-95 flex items-center justify-between group"
@@ -946,13 +978,13 @@ export default function App() {
             lang={lang}
             t={t}
           />
-          <main className="max-w-xl mx-auto px-6 pt-6">
+          <main className="max-w-xl md:max-w-4xl mx-auto px-6 pt-6">
             
             {/* Step 1: Select Target Division */}
             {!transferDivision ? (
                <div>
                   <h3 className="text-lg font-bold mb-4 text-slate-200">{t('selectTargetDivision')}</h3>
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                      {allDivisionsGlobal.map(div => (
                         <button 
                            key={div} 
@@ -966,7 +998,7 @@ export default function App() {
                </div>
             ) : !foundTransferStudent ? (
                /* Step 2: Enter ID */
-               <div className="animate-fade-in">
+               <div className="animate-fade-in max-w-xl mx-auto">
                   <div className="bg-white/10 p-4 rounded-2xl border border-white/10 mb-6">
                      <p className="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">{t('selectTargetDivision')}</p>
                      <div className="flex justify-between items-center">
@@ -989,7 +1021,7 @@ export default function App() {
                </div>
             ) : (
                /* Step 3: Confirm & Select Class */
-               <div className="animate-fade-in">
+               <div className="animate-fade-in max-w-2xl mx-auto">
                    <div className="bg-white/10 p-6 rounded-3xl border border-white/10 mb-6 relative overflow-hidden">
                       <div className="relative z-10">
                          <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">{t('confirmTransfer')}</h3>
@@ -1054,14 +1086,14 @@ export default function App() {
             lang={lang}
             t={t}
           />
-          <main className="max-w-xl mx-auto px-6 pt-8 pb-20">
+          <main className="max-w-xl md:max-w-6xl mx-auto px-6 pt-8 pb-20">
             {!selectedDivision && (
               <p className="text-slate-500 mb-6 font-medium">{t('chooseDivision')}</p>
             )}
             
             {!selectedDivision ? (
               // --- DIVISION SELECTION ---
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableDivisions.map((div, idx) => (
                   <button
                     key={div}
@@ -1090,7 +1122,7 @@ export default function App() {
               <>
                 {/* NEW DASHBOARD (Only in Analyze Mode) */}
                 {mode === AppMode.ANALYZE_SELECT && dashboardStats && (
-                  <div className="mb-10 animate-fade-in">
+                  <div className="mb-10 animate-fade-in max-w-3xl mx-auto">
                     {/* Dashboard Card */}
                     <div className="relative overflow-visible rounded-[2rem] bg-white/70 backdrop-blur-md shadow-lg border border-white/50 p-6 z-10">
                        
@@ -1181,12 +1213,12 @@ export default function App() {
                        <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-40 pointer-events-none ${selectedSection === 'Boys' ? 'bg-blue-400' : 'bg-pink-400'}`}></div>
                     </div>
                     
-                    <p className="text-slate-500 mt-8 mb-4 font-medium px-2">{t('selectClassContext')}</p>
+                    <p className="text-slate-500 mt-8 mb-4 font-medium px-2 text-center">{t('selectClassContext')}</p>
                   </div>
                 )}
                 
                 {/* --- CLASS GRID --- */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {availableClasses.map((cls, idx) => (
                     <button
                       key={cls}
@@ -1208,7 +1240,7 @@ export default function App() {
 
                 {/* --- SEARCH SINGLE STUDENT BUTTON (Analysis Mode Only) --- */}
                 {mode === AppMode.ANALYZE_SELECT && (
-                  <div className="mt-8 animate-fade-in">
+                  <div className="mt-8 animate-fade-in max-w-xl mx-auto">
                     <button 
                       onClick={() => setMode(AppMode.SEARCH_STUDENT)}
                       className="w-full py-4 rounded-2xl bg-slate-800 text-white font-semibold shadow-lg shadow-slate-400/20 hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
@@ -1238,7 +1270,7 @@ export default function App() {
             t={t}
           />
           
-          <main className="max-w-xl mx-auto px-4 pt-6">
+          <main className="max-w-xl md:max-w-7xl mx-auto px-4 pt-6">
             <div className="mb-6 flex">
               <DateSelector 
                 label={t('attendanceDate')} 
@@ -1250,7 +1282,7 @@ export default function App() {
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {currentClassStudents.map((student, idx) => {
                  const studentKey = generateKey(student.id, student.name);
                  const isAlreadyRecorded = alreadyAbsentKeys.has(studentKey);
@@ -1334,7 +1366,7 @@ export default function App() {
           </main>
 
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-white/20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-40">
-            <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+            <div className="max-w-xl md:max-w-7xl mx-auto flex items-center justify-between gap-4">
               <div className="text-sm font-medium text-slate-600 ps-2">
                 <span className="font-bold text-slate-900 text-lg">{n(markedAbsentKeys.size)}</span> {t('absentCount', {count: ''}).replace(/^\d+\s*/, '')}
               </div>
@@ -1374,7 +1406,7 @@ export default function App() {
             </p>
           </div>
 
-          <main className="max-w-xl mx-auto px-4 pt-6">
+          <main className="max-w-xl md:max-w-5xl mx-auto px-4 pt-6">
             <div className="glass p-5 rounded-3xl shadow-sm mb-6 no-print">
                <div className="flex flex-col gap-4">
                  <div className="flex items-center gap-3">
@@ -1431,7 +1463,7 @@ export default function App() {
                   <span>{t('details')}</span>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4 print:block print:space-y-2">
                   {analysisResults && analysisResults.length > 0 ? (
                     analysisResults.map((res, idx) => {
                       const studentKey = generateKey(res.student.id, res.student.name);
@@ -1500,7 +1532,7 @@ export default function App() {
                       );
                     })
                   ) : (
-                     <div className="text-center py-12 bg-white/40 rounded-3xl border-2 border-dashed border-slate-200">
+                     <div className="col-span-2 text-center py-12 bg-white/40 rounded-3xl border-2 border-dashed border-slate-200">
                        <p className="text-slate-400 font-medium">{t('noStudentsRange')}</p>
                      </div>
                   )}
@@ -1525,7 +1557,7 @@ export default function App() {
             t={t}
           />
           
-          <main className="max-w-xl mx-auto px-6 pt-10">
+          <main className="max-w-xl md:max-w-4xl mx-auto px-6 pt-10">
             {/* Search Box */}
             <div className="glass p-6 rounded-3xl shadow-lg mb-8">
                <label className="block text-sm font-bold text-slate-600 mb-2">{t('enterStudentId')}</label>
